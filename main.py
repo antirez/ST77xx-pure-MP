@@ -19,6 +19,7 @@ backlight.on()
 color = display.color565(0,0,0)
 display.raw_fill(color)
 color = display.color565(255,0,0)
+
 while True:
     start = time.ticks_ms()
     for i in range(1000):
@@ -28,14 +29,14 @@ while True:
     elapsed = time.ticks_ms()-start
     print(f"1k pixels in {elapsed} ms")
 
-while True:
-    display.line(
-        random.getrandbits(7),
-        random.getrandbits(7),
-        random.getrandbits(7),
-        random.getrandbits(7),
-        1)
-    display.show()
+    for i in range(20):
+        display.line(
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            1)
+        display.show()
 
 while True:
     print("HERE")
