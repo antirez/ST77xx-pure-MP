@@ -1,4 +1,4 @@
-import dht, machine, time
+import dht, machine, time, random
 from machine import Pin, SPI
 import st7789
 
@@ -12,12 +12,17 @@ display = st7789.ST7789(
 )
 
 display.init()
-display.line(0,0,100,100,1)
-display.line(50,20,90,45,1)
-display.show()
-
 backlight = Pin(5,Pin.OUT)
 backlight.on()
+
+while True:
+    display.line(
+        random.getrandbits(7),
+        random.getrandbits(7),
+        random.getrandbits(7),
+        random.getrandbits(7),
+        1)
+    display.show()
 
 while True:
     print("HERE")
