@@ -52,7 +52,7 @@ _ENCODE_POS = ">HH"
 
 class ST7789:
     def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
-                 xstart=-1, ystart=-1, inversion=False, mono=False):
+                 xstart=-1, ystart=-1, inversion=False, fbmode=None):
         """
         display = st7789.ST7789(
             SPI(1, baudrate=40000000, phase=0, polarity=1),
@@ -70,7 +70,9 @@ class ST7789:
         self.cs = cs
         self.backlight = backlight
         self.inversion = inversion
-        self.mono = mono
+
+        # Configure display parameters that depend on the
+        # screen size.
         if xstart >= 0 and ystart >= 0:
             self.xstart = xstart
             self.ystart = ystart
@@ -87,51 +89,19 @@ class ST7789:
             self.xstart = 0
             self.ystart = 0
 
-        if self.mono:
-            self.rawbuffer = bytearray(width*height//8)
-            self.fb = framebuf.FrameBuffer(self.rawbuffer,width,height,
-                                           framebuf.MONO_HLSB)
-            self.mono_row = bytearray(self.width*2) # Mono -> RGB565 row conv.
-
-            # See the show_mono() method. The conversion map is useful
-            # to speedup rendering a bitmap as RGB565. Each byte in the table
-            # is a possible 8 pixel cluster arrangement and the relative
-            # representation as RGB565.
-            #
-            # This consumes memory, so we allocate it only if the mono mode
-            # was selected.
-            self.mono_conv_map = {
-                byte: bytes(sum(((0xFF, 0xFF) if (byte >> bit) & 1 else (0x00, 0x00) for bit in range(7, -1, -1)), ()))
-                for byte in range(256)
-            }
-        else:
-            self.rawbuffer = bytearray(width*height*2)
-            self.fb = framebuf.FrameBuffer(self.rawbuffer,width,height,
-                                           framebuf.RGB565)
-
         # Always allocate a tiny 8x8 framebuffer in RGB565 for fast
         # single chars plotting. This is useful in order to draw text
         # using the framebuffer 8x8 font inside micropython and using
         # a single SPI write for each whole character.
         self.charfb_data = bytearray(8*8*2)
         self.charfb = framebuf.FrameBuffer(self.charfb_data,8,8,framebuf.RGB565)
-        self.fill = self.fb.fill
-        self.pixel = self.fb.pixel
-        self.hline = self.fb.hline
-        self.vline = self.fb.vline
-        self.line = self.fb.line
-        self.rect = self.fb.rect
-        self.fill_rect = self.fb.fill_rect
-        # self.ellipse = self.fb.ellipse
-        # self.poly = self.fb.poly
-        self.text = self.fb.text
-        self.scroll = self.fb.scroll
-        self.blit = self.fb.blit
 
     def color565(self, r=0, g=0, b=0):
+        return (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
+
+    def color565_raw(self, r=0, g=0, b=0):
         # Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
-        c = (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
-        return struct.pack(_ENCODE_PIXEL, c)
+        return struct.pack(_ENCODE_PIXEL, self.color565(r,g,b))
 
     def write(self, command=None, data=None):
         """SPI write to the device: commands and data"""
@@ -186,7 +156,7 @@ class ST7789:
         time.sleep_ms(10)
         self.write(ST77XX_NORON)
         time.sleep_ms(10)
-        self.fill(0)
+        self.raw_fill(self.color565_raw(0,0,0))
         self.write(ST77XX_DISPON)
         time.sleep_ms(500)
 
@@ -225,26 +195,6 @@ class ST7789:
         self._set_columns(x0, x1)
         self._set_rows(y0, y1)
         self.write(ST77XX_RAMWR)
-
-    # This is the method used to update the framebuffer when we just
-    # allocate a monochromatic display in order to save memory.
-    # We have to convert the mono bitmap to RGB565 colors on the fly
-    # and in order to speed-up this process we use a precomputed table
-    # of all the 256 possible 8-pixel arrangements.
-    @micropython.native
-    def show_mono(self):
-        self.set_window(0, 0, self.width-1,self.height-1)
-        for i in range(0,len(self.rawbuffer),self.width//8):
-            for j in range(self.width//8):
-                self.mono_row[j*16:(j+1)*16] = self.mono_conv_map[self.rawbuffer[i+j]]
-            self.write(None, self.mono_row)
-
-    def show(self):
-        if self.mono:
-            self.show_mono()
-        else:
-            self.set_window(0, 0, self.width-1,self.height-1)
-            self.write(None, self.rawbuffer)
 
     # Drawing raw pixels is a fundamental operation so we go low
     # level avoiding function calls. This and other optimizations
@@ -336,7 +286,7 @@ class ST7789:
     # foreground color in RGB.
     def raw_char(self,x,y,char,bgcolor,fgcolor):
         self.charfb.fill(bgcolor)
-        self.charfb.text(0,0,fgcolor)
+        self.charfb.text(char,0,0,fgcolor)
         self.set_window(x, y, x+7, y+7)
         self.write(None,self.charfb_data)
 

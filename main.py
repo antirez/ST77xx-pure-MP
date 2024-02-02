@@ -9,21 +9,20 @@ display = st7789.ST7789(
     dc=machine.Pin(4, machine.Pin.OUT),
     cs=machine.Pin(10, machine.Pin.OUT),
     inversion = False,
-    mono=True
 )
 
 display.init()
 backlight = Pin(5,Pin.OUT)
 backlight.on()
 
-color = display.color565(0,0,0)
+color = display.color565_raw(0,0,0)
 display.raw_fill(color)
-color = display.color565(255,0,0)
+color = display.color565_raw(255,0,0)
 
 while True:
 
     # Write some text
-    display.raw_char(10,10,'a',display.color565(50,50,50),display.color565(0,255,100))
+    display.raw_char(10,10,'a',display.color565(10,10,10),display.color565(255,255,255))
 
     # Random points using raw pixels.
     start = time.ticks_ms()
@@ -34,22 +33,12 @@ while True:
     elapsed = time.ticks_ms()-start
     print(f"1k pixels in {elapsed} ms")
 
-    # Random lines using the framebuffer.
-    for i in range(20):
-        display.line(
-            random.getrandbits(8),
-            random.getrandbits(8),
-            random.getrandbits(8),
-            random.getrandbits(8),
-            1)
-        display.show()
-
     # Random circles, empty and full
     full = True
     for i in range(100):
-        fill_color = display.color565(random.getrandbits(8),
-                                      random.getrandbits(8),
-                                      random.getrandbits(8))
+        fill_color = display.color565_raw(random.getrandbits(8),
+                                          random.getrandbits(8),
+                                          random.getrandbits(8))
         display.raw_circle(
             random.getrandbits(8),
             random.getrandbits(8),
