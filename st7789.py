@@ -133,46 +133,25 @@ class ST7789:
     def color565(self, r=0, g=0, b=0):
         # Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
         c = (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
-        return bytes([(c&0xff00)>>8,c&0xff])
-
-    def dc_low(self):
-        self.dc.off()
-
-    def dc_high(self):
-        self.dc.on()
-
-    def reset_low(self):
-        if self.reset:
-            self.reset.off()
-
-    def reset_high(self):
-        if self.reset:
-            self.reset.on()
-
-    def cs_low(self):
-        if self.cs:
-            self.cs.off()
-
-    def cs_high(self):
-        if self.cs:
-            self.cs.on()
+        return struct.pack(_ENCODE_PIXEL, c)
 
     def write(self, command=None, data=None):
         """SPI write to the device: commands and data"""
         if command is not None:
-            self.dc_low()
+            self.dc.off()
             self.spi.write(command)
         if data is not None:
-            self.dc_high()
+            self.dc.on()
             self.spi.write(data)
 
     def hard_reset(self):
-        self.reset_high()
-        time.sleep_ms(50)
-        self.reset_low()
-        time.sleep_ms(50)
-        self.reset_high()
-        time.sleep_ms(150)
+        if self.reset:
+            self.reset.on()
+            time.sleep_ms(50)
+            self.reset.off()
+            time.sleep_ms(50)
+            self.reset.on()
+            time.sleep_ms(150)
 
     def soft_reset(self):
         self.write(ST77XX_SWRESET)
@@ -194,7 +173,7 @@ class ST7789:
         self.write(ST77XX_COLMOD, bytes([mode & 0x77]))
 
     def init(self, *args, **kwargs):
-        self.cs_low() # This this like that forever, much faster than
+        self.cs.off() # This this like that forever, much faster than
                       # continuously setting it on/off and rarely the
                       # SPI is connected to any other hardware.
         self.hard_reset()
@@ -226,13 +205,10 @@ class ST7789:
             7: ST7789_MADCTL_MV | ST7789_MADCTL_MX | ST7789_MADCTL_MY,
         }[rotation]
 
-        if vert_mirror:
-            value = ST7789_MADCTL_ML
-        elif horz_mirror:
-            value = ST7789_MADCTL_MH
+        if vert_mirror: value |= ST7789_MADCTL_ML
+        elif horz_mirror: value |= ST7789_MADCTL_MH
+        if is_bgr: value |= ST7789_MADCTL_BGR
 
-        if is_bgr:
-            value |= ST7789_MADCTL_BGR
         self.write(ST7789_MADCTL, bytes([value]))
 
     def _encode_pos(self, x, y):
@@ -273,21 +249,22 @@ class ST7789:
         self.set_window(x, y, x, y)
         self.write(None, color)
 
+    @micropython.native
     def raw_pixel_fast(self,x,y,color):
         if True:
-            self.dc_low()
+            self.dc.off()
             self.spi.write(ST77XX_CASET)
-            self.dc_high()
+            self.dc.on()
             self.spi.write(self._encode_pos(x, x))
 
-            self.dc_low()
+            self.dc.off()
             self.spi.write(ST77XX_RASET)
-            self.dc_high()
+            self.dc.on()
             self.spi.write(self._encode_pos(y, y))
 
-            self.dc_low()
+            self.dc.off()
             self.spi.write(ST77XX_RAMWR)
-            self.dc_high()
+            self.dc.on()
             self.spi.write(color)
 
         if False:
