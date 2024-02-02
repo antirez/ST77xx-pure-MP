@@ -8,12 +8,35 @@ display = st7789.ST7789(
     reset=machine.Pin(2, machine.Pin.OUT),
     dc=machine.Pin(4, machine.Pin.OUT),
     cs=machine.Pin(10, machine.Pin.OUT),
+    inversion = False,
     mono=True
 )
 
 display.init()
 backlight = Pin(5,Pin.OUT)
 backlight.on()
+
+color = display.color565(0,0,0)
+display.raw_fill(color)
+color = display.color565(255,0,0)
+while True:
+    if False:
+        start = time.ticks_ms()
+        for i in range(100):
+            display.raw_pixel(random.getrandbits(7),
+                              random.getrandbits(7),
+                              color)
+        elapsed = time.ticks_ms()-start
+        print(f"baseline 10k pixels in {elapsed} ms")
+
+    if True:
+        start = time.ticks_ms()
+        for i in range(100):
+            display.raw_pixel_fast(random.getrandbits(7),
+                              random.getrandbits(7),
+                              color)
+        elapsed = time.ticks_ms()-start
+        print(f"fast     10k pixels in {elapsed} ms")
 
 while True:
     display.line(

@@ -13,30 +13,31 @@ import ustruct as struct
 import framebuf
 
 # commands
-ST77XX_NOP = const(0x00)
-ST77XX_SWRESET = const(0x01)
-ST77XX_RDDID = const(0x04)
-ST77XX_RDDST = const(0x09)
+ST77XX_NOP = bytes([0x00])
+ST77XX_SWRESET = bytes([0x01])
+ST77XX_RDDID = bytes([0x04])
+ST77XX_RDDST = bytes([0x09])
 
-ST77XX_SLPIN = const(0x10)
-ST77XX_SLPOUT = const(0x11)
-ST77XX_PTLON = const(0x12)
-ST77XX_NORON = const(0x13)
+ST77XX_SLPIN = bytes([0x10])
+ST77XX_SLPOUT = bytes([0x11])
+ST77XX_PTLON = bytes([0x12])
+ST77XX_NORON = bytes([0x13])
 
-ST77XX_INVOFF = const(0x20)
-ST77XX_INVON = const(0x21)
-ST77XX_DISPOFF = const(0x28)
-ST77XX_DISPON = const(0x29)
-ST77XX_CASET = const(0x2A)
-ST77XX_RASET = const(0x2B)
-ST77XX_RAMWR = const(0x2C)
-ST77XX_RAMRD = const(0x2E)
+ST77XX_INVOFF = bytes([0x20])
+ST77XX_INVON = bytes([0x21])
+ST77XX_DISPOFF = bytes([0x28])
+ST77XX_DISPON = bytes([0x29])
+ST77XX_CASET = bytes([0x2A])
+ST77XX_RASET = bytes([0x2B])
+ST77XX_RAMWR = bytes([0x2C])
+ST77XX_RAMRD = bytes([0x2E])
 
-ST77XX_PTLAR = const(0x30)
-ST77XX_VSCRDEF = const(0x33)
-ST77XX_COLMOD = const(0x3A)
-ST7789_MADCTL = const(0x36)
+ST77XX_PTLAR = bytes([0x30])
+ST77XX_VSCRDEF = bytes([0x33])
+ST77XX_COLMOD = bytes([0x3A])
+ST7789_MADCTL = bytes([0x36])
 
+# MADCTL flags
 ST7789_MADCTL_MY = const(0x80)
 ST7789_MADCTL_MX = const(0x40)
 ST7789_MADCTL_MV = const(0x20)
@@ -45,11 +46,7 @@ ST7789_MADCTL_BGR = const(0x08)
 ST7789_MADCTL_MH = const(0x04)
 ST7789_MADCTL_RGB = const(0x00)
 
-ST7789_RDID1 = const(0xDA)
-ST7789_RDID2 = const(0xDB)
-ST7789_RDID3 = const(0xDC)
-ST7789_RDID4 = const(0xDD)
-
+# Color mode flags
 ColorMode_65K = const(0x50)
 ColorMode_262K = const(0x60)
 ColorMode_12bit = const(0x03)
@@ -73,7 +70,7 @@ _DECODE_PIXEL = ">BBB"
 
 class ST7789:
     def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
-                 xstart=-1, ystart=-1, mono=False):
+                 xstart=-1, ystart=-1, inversion=False, mono=False):
         """
         display = st7789.ST7789(
             SPI(1, baudrate=40000000, phase=0, polarity=1),
@@ -90,6 +87,7 @@ class ST7789:
         self.dc = dc
         self.cs = cs
         self.backlight = backlight
+        self.inversion = inversion
         self.mono = mono
         if xstart >= 0 and ystart >= 0:
             self.xstart = xstart
@@ -134,7 +132,8 @@ class ST7789:
 
     def color565(self, r=0, g=0, b=0):
         # Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
-        return (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
+        c = (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
+        return bytes([(c&0xff00)>>8,c&0xff])
 
     def dc_low(self):
         self.dc.off()
@@ -160,24 +159,20 @@ class ST7789:
 
     def write(self, command=None, data=None):
         """SPI write to the device: commands and data"""
-        self.cs_low()
         if command is not None:
             self.dc_low()
-            self.spi.write(bytes([command]))
+            self.spi.write(command)
         if data is not None:
             self.dc_high()
             self.spi.write(data)
-        self.cs_high()
 
     def hard_reset(self):
-        self.cs_low()
         self.reset_high()
         time.sleep_ms(50)
         self.reset_low()
         time.sleep_ms(50)
         self.reset_high()
         time.sleep_ms(150)
-        self.cs_high()
 
     def soft_reset(self):
         self.write(ST77XX_SWRESET)
@@ -199,6 +194,9 @@ class ST7789:
         self.write(ST77XX_COLMOD, bytes([mode & 0x77]))
 
     def init(self, *args, **kwargs):
+        self.cs_low() # This this like that forever, much faster than
+                      # continuously setting it on/off and rarely the
+                      # SPI is connected to any other hardware.
         self.hard_reset()
         self.soft_reset()
         self.sleep_mode(False)
@@ -207,7 +205,7 @@ class ST7789:
         self._set_color_mode(color_mode)
         time.sleep_ms(50)
         self._set_mem_access_mode(0, False, False, False)
-        self.inversion_mode(True)
+        self.inversion_mode(self.inversion)
         time.sleep_ms(10)
         self.write(ST77XX_NORON)
         time.sleep_ms(10)
@@ -270,6 +268,44 @@ class ST7789:
                 self.write(None, self.mono_row)
         else:
             self.write(None, self.rawbuffer)
+
+    def raw_pixel(self,x,y,color):
+        self.set_window(x, y, x, y)
+        self.write(None, color)
+
+    def raw_pixel_fast(self,x,y,color):
+        if True:
+            self.dc_low()
+            self.spi.write(ST77XX_CASET)
+            self.dc_high()
+            self.spi.write(self._encode_pos(x, x))
+
+            self.dc_low()
+            self.spi.write(ST77XX_RASET)
+            self.dc_high()
+            self.spi.write(self._encode_pos(y, y))
+
+            self.dc_low()
+            self.spi.write(ST77XX_RAMWR)
+            self.dc_high()
+            self.spi.write(color)
+
+        if False:
+            self.write(ST77XX_CASET, self._encode_pos(x, x))
+            self.write(ST77XX_RASET, self._encode_pos(y, y))
+            self.write(ST77XX_RAMWR, color)
+
+    def raw_fill(self,color):
+        self.set_window(0, 0, self.width-1, self.height-1)
+        left = self.width*self.height
+        buflen = 64
+        buf = color*buflen
+        while left >= len(buf):
+            self.write(None, buf)
+            left -= buflen
+        while left:
+            self.write(None, color)
+            left -= 1
 
     def contrast(self,level):
         # TODO: implement me!
