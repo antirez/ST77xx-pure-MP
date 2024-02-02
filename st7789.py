@@ -261,6 +261,17 @@ class ST7789:
         buf = color*self.width
         for i in range(self.height): self.write(None, buf)
 
+    # We can draw horizontal and vertical lines very fast because
+    # we can just set a 1 pixel wide/tall window and fill it.
+    def raw_hline(self,x0,x1,y,color):
+        self.set_window(x0, y, x1, y)
+        self.write(None, color*(x1-x0+1))
+
+    # Same as .raw_hline() but for vertical lines.
+    def raw_vline(self,y0,y1,x,color):
+        self.set_window(x, y0, x, y1)
+        self.write(None, color*(y1-y0+1))
+
     def contrast(self,level):
         # TODO: implement me!
         pass
