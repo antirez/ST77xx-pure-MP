@@ -213,15 +213,23 @@ class ST7789:
         self._set_rows(y0, y1)
         self.write(ST77XX_RAMWR)
 
+    # This is the method used to update the framebuffer when we just
+    # allocate a monochromatic display in order to save memory.
+    # We have to convert the mono bitmap to RGB565 colors on the fly
+    # and in order to speed-up this process we use a precomputed table
+    # of all the 256 possible 8-pixel arrangements.
     @micropython.native
+    def show_mono(self):
+        for i in range(0,len(self.rawbuffer),self.width//8):
+            for j in range(self.width//8):
+                self.mono_row[j*16:(j+1)*16] = self.mono_conv_map[self.rawbuffer[i+j]]
+            self.write(None, self.mono_row)
+
     def show(self):
-        self.set_window(0, 0, self.width-1,self.height-1)
         if self.mono:
-            for i in range(0,len(self.rawbuffer),self.width//8):
-                for j in range(self.width//8):
-                    self.mono_row[j*16:(j+1)*16] = self.mono_conv_map[self.rawbuffer[i+j]]
-                self.write(None, self.mono_row)
+            self.show_mono()
         else:
+            self.set_window(0, 0, self.width-1,self.height-1)
             self.write(None, self.rawbuffer)
 
     # Drawing raw pixels is a fundamental operation so we go low
@@ -244,6 +252,10 @@ class ST7789:
         self.dc.on()
         self.spi.write(color)
 
+    # Just fill the whole display memory with the specified color.
+    # We use a buffer of screen-width pixels. Even in the worst case
+    # of 320 pixels, it's just 640 bytes. Note that writing a scanline
+    # per loop dramatically improves performances.
     def raw_fill(self,color):
         self.set_window(0, 0, self.width-1, self.height-1)
         buf = color*self.width
