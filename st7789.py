@@ -290,7 +290,11 @@ class ST7789:
         x0 = 0
         y0 = radius
 
-        self.raw_hline(x - radius, x + radius, y, color) # Draw diameter
+        if fill:
+            self.raw_hline(x - radius, x + radius, y, color) # Draw diameter
+        else:
+            self.raw_pixel(x - radius, y, color) # Left-most point
+            self.raw_pixel(x + radius, y, color) # Right-most point
 
         while x0 < y0:
             if f >= 0:
