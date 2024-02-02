@@ -92,7 +92,10 @@ class ST7789:
         if xstart >= 0 and ystart >= 0:
             self.xstart = xstart
             self.ystart = ystart
-        elif (self.width, self.height) == (240, 240):
+        elif (self.width, self.height) == (128, 160):
+            self.xstart = 0
+            self.ystart = 0
+      elif (self.width, self.height) == (240, 240):
             self.xstart = 0
             self.ystart = 0
         elif (self.width, self.height) == (135, 240):
