@@ -21,22 +21,39 @@ display.raw_fill(color)
 color = display.color565(255,0,0)
 
 while True:
+
+    # Random points using raw pixels.
     start = time.ticks_ms()
     for i in range(1000):
-        x = random.getrandbits(7)
-        y = random.getrandbits(7)
+        x = random.getrandbits(8)
+        y = random.getrandbits(8)
         display.raw_pixel(x,y,color)
     elapsed = time.ticks_ms()-start
     print(f"1k pixels in {elapsed} ms")
 
+    # Random lines using the framebuffer.
     for i in range(20):
         display.line(
-            random.getrandbits(7),
-            random.getrandbits(7),
-            random.getrandbits(7),
-            random.getrandbits(7),
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(8),
             1)
         display.show()
+
+    # Random circles, empty and full
+    full = True
+    for i in range(100):
+        fill_color = display.color565(random.getrandbits(8),
+                                      random.getrandbits(8),
+                                      random.getrandbits(8))
+        display.raw_circle(
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(6),
+            fill_color,
+            full)
+        full = not full # Switch between full and empty circles.
 
 while True:
     print("HERE")

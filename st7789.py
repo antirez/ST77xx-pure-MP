@@ -92,8 +92,14 @@ class ST7789:
             self.fb = framebuf.FrameBuffer(self.rawbuffer,width,height,
                                            framebuf.MONO_HLSB)
             self.mono_row = bytearray(self.width*2) # Mono -> RGB565 row conv.
-            # See the show() method. The conversion map is useful
-            # to speedup rendering a bitmap as RGB565.
+
+            # See the show_mono() method. The conversion map is useful
+            # to speedup rendering a bitmap as RGB565. Each byte in the table
+            # is a possible 8 pixel cluster arrangement and the relative
+            # representation as RGB565.
+            #
+            # This consumes memory, so we allocate it only if the mono mode
+            # was selected.
             self.mono_conv_map = {
                 byte: bytes(sum(((0xFF, 0xFF) if (byte >> bit) & 1 else (0x00, 0x00) for bit in range(7, -1, -1)), ()))
                 for byte in range(256)
@@ -238,6 +244,7 @@ class ST7789:
     # made drawing 10k pixels with an ESP2866 from 420ms to 100ms.
     @micropython.native
     def raw_pixel(self,x,y,color):
+        if x >= self.width: return
         self.dc.off()
         self.spi.write(ST77XX_CASET)
         self.dc.on()
@@ -265,6 +272,8 @@ class ST7789:
     # We can draw horizontal and vertical lines very fast because
     # we can just set a 1 pixel wide/tall window and fill it.
     def raw_hline(self,x0,x1,y,color):
+        if x0 < 0: x0 = 0
+        if x1 >= self.width: x1 = self.width-1
         self.set_window(x0, y, x1, y)
         self.write(None, color*(x1-x0+1))
 
@@ -272,6 +281,44 @@ class ST7789:
     def raw_vline(self,y0,y1,x,color):
         self.set_window(x, y0, x, y1)
         self.write(None, color*(y1-y0+1))
+
+    # Midpoint Circle algorithm for filled circle.
+    def raw_circle(self, x, y, radius, color, fill=False):
+        f = 1 - radius
+        dx = 1
+        dy = -2 * radius
+        x0 = 0
+        y0 = radius
+
+        self.raw_hline(x - radius, x + radius, y, color) # Draw diameter
+
+        while x0 < y0:
+            if f >= 0:
+                y0 -= 1
+                dy += 2
+                f += dy
+            x0 += 1
+            dx += 2
+            f += dx
+
+            if fill:
+				# We can exploit our relatively fast horizontal line
+				# here, and just draw an h line for each two points at
+				# the extremes.
+                self.raw_hline(x - x0, x + x0, y + y0, color) # Upper half
+                self.raw_hline(x - x0, x + x0, y - y0, color) # Lower half
+                self.raw_hline(x - y0, x + y0, y + x0, color) # Right half
+                self.raw_hline(x - y0, x + y0, y - x0, color) # Left half
+            else:
+				# Plot points in each of the eight octants
+				self.raw_pixel(x + x0, y + y0, color)
+				self.raw_pixel(x - x0, y + y0, color)
+				self.raw_pixel(x + x0, y - y0, color)
+				self.raw_pixel(x - x0, y - y0, color)
+				self.raw_pixel(x + y0, y + x0, color)
+				self.raw_pixel(x - y0, y + x0, color)
+				self.raw_pixel(x + y0, y - x0, color)
+				self.raw_pixel(x - y0, y - x0, color)
 
     def contrast(self,level):
         # TODO: implement me!
