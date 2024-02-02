@@ -96,12 +96,12 @@ class ST7789:
         self.charfb_data = bytearray(8*8*2)
         self.charfb = framebuf.FrameBuffer(self.charfb_data,8,8,framebuf.RGB565)
 
-    def color565(self, r=0, g=0, b=0):
-        return (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
-
-    def color565_raw(self, r=0, g=0, b=0):
+    # That's the color format our API takes. We take r, g, b, translate
+    # to 16 bit value and pack it as as two bytes.
+    def color(self, r=0, g=0, b=0):
         # Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
-        return struct.pack(_ENCODE_PIXEL, self.color565(r,g,b))
+        c = (r & 0xf8) << 8 | (g & 0xfc) << 3 | b >> 3
+        return struct.pack(_ENCODE_PIXEL, c)
 
     def write(self, command=None, data=None):
         """SPI write to the device: commands and data"""
@@ -156,7 +156,7 @@ class ST7789:
         time.sleep_ms(10)
         self.write(ST77XX_NORON)
         time.sleep_ms(10)
-        self.raw_fill(self.color565_raw(0,0,0))
+        self.fill(self.color(0,0,0))
         self.write(ST77XX_DISPON)
         time.sleep_ms(500)
 
@@ -200,7 +200,7 @@ class ST7789:
     # level avoiding function calls. This and other optimizations
     # made drawing 10k pixels with an ESP2866 from 420ms to 100ms.
     @micropython.native
-    def raw_pixel(self,x,y,color):
+    def pixel(self,x,y,color):
         if x >= self.width: return
         self.dc.off()
         self.spi.write(ST77XX_CASET)
@@ -221,26 +221,54 @@ class ST7789:
     # We use a buffer of screen-width pixels. Even in the worst case
     # of 320 pixels, it's just 640 bytes. Note that writing a scanline
     # per loop dramatically improves performances.
-    def raw_fill(self,color):
+    def fill(self,color):
         self.set_window(0, 0, self.width-1, self.height-1)
         buf = color*self.width
         for i in range(self.height): self.write(None, buf)
 
     # We can draw horizontal and vertical lines very fast because
     # we can just set a 1 pixel wide/tall window and fill it.
-    def raw_hline(self,x0,x1,y,color):
-        if x0 < 0: x0 = 0
-        if x1 >= self.width: x1 = self.width-1
+    def hline(self,x0,x1,y,color):
+        x0,x1 = max(min(x0,x1),0),min(max(x0,x1),self.width-1)
         self.set_window(x0, y, x1, y)
         self.write(None, color*(x1-x0+1))
 
-    # Same as .raw_hline() but for vertical lines.
-    def raw_vline(self,y0,y1,x,color):
+    # Same as hline() but for vertical lines.
+    def vline(self,y0,y1,x,color):
+        y0,y1 = max(min(y0,y1),0),min(max(y0,y1),self.height-1)
         self.set_window(x, y0, x, y1)
         self.write(None, color*(y1-y0+1))
 
+    # Bresenham's algorithm with fast path for horizontal / vertical lines.
+    # Note that here a further optimization is possible exploiting how the
+    # ST77xx addresses memory: we should always trace lines from left
+    # to right, then as long as we keep incrementing the "x" we could
+    # not change the current window, and just write the color bytes to
+    # the ST77xx.
+    def line(self, x0, y0, x1, y1, color):
+        if y0 == y1: return self.hline(x0, x1, y0, color)
+        if x0 == x1: return self.vline(y0, y1, x0, color)
+
+        dx = abs(x1 - x0)
+        dy = -abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx + dy  # Error value for xy
+
+        while True:
+            self.pixel(x0, y0, color)
+            if x0 == x1 and y0 == y1:
+                break
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+
     # Midpoint Circle algorithm for filled circle.
-    def raw_circle(self, x, y, radius, color, fill=False):
+    def circle(self, x, y, radius, color, fill=False):
         f = 1 - radius
         dx = 1
         dy = -2 * radius
@@ -248,10 +276,10 @@ class ST7789:
         y0 = radius
 
         if fill:
-            self.raw_hline(x - radius, x + radius, y, color) # Draw diameter
+            self.hline(x - radius, x + radius, y, color) # Draw diameter
         else:
-            self.raw_pixel(x - radius, y, color) # Left-most point
-            self.raw_pixel(x + radius, y, color) # Right-most point
+            self.pixel(x - radius, y, color) # Left-most point
+            self.pixel(x + radius, y, color) # Right-most point
 
         while x0 < y0:
             if f >= 0:
@@ -266,27 +294,31 @@ class ST7789:
 				# We can exploit our relatively fast horizontal line
 				# here, and just draw an h line for each two points at
 				# the extremes.
-                self.raw_hline(x - x0, x + x0, y + y0, color) # Upper half
-                self.raw_hline(x - x0, x + x0, y - y0, color) # Lower half
-                self.raw_hline(x - y0, x + y0, y + x0, color) # Right half
-                self.raw_hline(x - y0, x + y0, y - x0, color) # Left half
+                self.hline(x - x0, x + x0, y + y0, color) # Upper half
+                self.hline(x - x0, x + x0, y - y0, color) # Lower half
+                self.hline(x - y0, x + y0, y + x0, color) # Right half
+                self.hline(x - y0, x + y0, y - x0, color) # Left half
             else:
 				# Plot points in each of the eight octants
-				self.raw_pixel(x + x0, y + y0, color)
-				self.raw_pixel(x - x0, y + y0, color)
-				self.raw_pixel(x + x0, y - y0, color)
-				self.raw_pixel(x - x0, y - y0, color)
-				self.raw_pixel(x + y0, y + x0, color)
-				self.raw_pixel(x - y0, y + x0, color)
-				self.raw_pixel(x + y0, y - x0, color)
-				self.raw_pixel(x - y0, y - x0, color)
+				self.pixel(x + x0, y + y0, color)
+				self.pixel(x - x0, y + y0, color)
+				self.pixel(x + x0, y - y0, color)
+				self.pixel(x - x0, y - y0, color)
+				self.pixel(x + y0, y + x0, color)
+				self.pixel(x - y0, y + x0, color)
+				self.pixel(x + y0, y - x0, color)
+				self.pixel(x - y0, y - x0, color)
 
     # Draw a single character 'char' using the font in the MicroPython
     # framebuffer implementation. It is possible to specify the background and
     # foreground color in RGB.
+    # Note: in order to uniform this API with all the rest, that takes
+    # the color as two bytes, we convert the colors back into a 16 bit
+    # rgb565 value since this is the format that the framebuffer
+    # implementation expects.
     def char(self,x,y,char,bgcolor,fgcolor):
-        self.charfb.fill(bgcolor)
-        self.charfb.text(char,0,0,fgcolor)
+        self.charfb.fill(struct.unpack(">H",bgcolor)[0])
+        self.charfb.text(char,0,0,struct.unpack(">H",fgcolor)[0])
         self.set_window(x, y, x+7, y+7)
         self.write(None,self.charfb_data)
 

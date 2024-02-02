@@ -15,38 +15,52 @@ display.init()
 backlight = Pin(5,Pin.OUT)
 backlight.on()
 
-color = display.color565_raw(0,0,0)
-display.raw_fill(color)
-color = display.color565_raw(255,0,0)
+color = display.color(0,0,0)
+display.fill(color)
+color = display.color(255,0,0)
 
 while True:
 
-    # Write some text
-    display.char(10,10,'a',display.color565(10,10,10),display.color565(255,255,255))
-    display.text(30,30,'Hello World',display.color565(0,0,0),display.color565(255,255,255))
+    # Write some text.
+    display.char(10,10,'a',display.color(10,10,10),display.color(255,255,255))
+    display.text(30,30,'Hello World',display.color(0,0,0),display.color(255,255,255))
 
     # Random points using raw pixels.
     start = time.ticks_ms()
     for i in range(1000):
         x = random.getrandbits(8)
         y = random.getrandbits(8)
-        display.raw_pixel(x,y,color)
+        display.pixel(x,y,color)
     elapsed = time.ticks_ms()-start
     print(f"1k pixels in {elapsed} ms")
 
-    # Random circles, empty and full
+    # Random circles, empty and full.
     full = True
     for i in range(100):
-        fill_color = display.color565_raw(random.getrandbits(8),
-                                          random.getrandbits(8),
-                                          random.getrandbits(8))
-        display.raw_circle(
+        fill_color = display.color(random.getrandbits(8),
+                                   random.getrandbits(8),
+                                   random.getrandbits(8))
+        display.circle(
             random.getrandbits(8),
             random.getrandbits(8),
             random.getrandbits(6),
             fill_color,
             full)
         full = not full # Switch between full and empty circles.
+
+    # Random lines
+    display.fill(display.color(0,0,0))
+    full = True
+    for i in range(100):
+        fill_color = display.color(random.getrandbits(8),
+                                   random.getrandbits(8),
+                                   random.getrandbits(8))
+        display.line(
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(8),
+            fill_color)
 
 while True:
     print("HERE")
