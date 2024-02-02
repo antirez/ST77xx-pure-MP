@@ -246,15 +246,8 @@ class ST7789:
 
     def raw_fill(self,color):
         self.set_window(0, 0, self.width-1, self.height-1)
-        left = self.width*self.height
-        buflen = 64
-        buf = color*buflen
-        while left >= len(buf):
-            self.write(None, buf)
-            left -= buflen
-        while left:
-            self.write(None, color)
-            left -= 1
+        buf = color*self.width
+        for i in range(self.height): self.write(None, buf)
 
     def contrast(self,level):
         # TODO: implement me!
