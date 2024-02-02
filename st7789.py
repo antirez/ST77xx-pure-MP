@@ -284,11 +284,16 @@ class ST7789:
     # Draw a single character 'char' using the font in the MicroPython
     # framebuffer implementation. It is possible to specify the background and
     # foreground color in RGB.
-    def raw_char(self,x,y,char,bgcolor,fgcolor):
+    def char(self,x,y,char,bgcolor,fgcolor):
         self.charfb.fill(bgcolor)
         self.charfb.text(char,0,0,fgcolor)
         self.set_window(x, y, x+7, y+7)
         self.write(None,self.charfb_data)
+
+    # Write text. Like 'char' but for full strings.
+    def text(self,x,y,txt,bgcolor,fgcolor):
+        for i in range(len(txt)):
+            self.char(x+i*8,y,txt[i],bgcolor,fgcolor)
 
     def contrast(self,level):
         # TODO: implement me!
