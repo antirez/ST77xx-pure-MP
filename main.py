@@ -20,23 +20,13 @@ color = display.color565(0,0,0)
 display.raw_fill(color)
 color = display.color565(255,0,0)
 while True:
-    if False:
-        start = time.ticks_ms()
-        for i in range(100):
-            display.raw_pixel(random.getrandbits(7),
-                              random.getrandbits(7),
-                              color)
-        elapsed = time.ticks_ms()-start
-        print(f"baseline 10k pixels in {elapsed} ms")
-
-    if True:
-        start = time.ticks_ms()
-        for i in range(100):
-            display.raw_pixel_fast(random.getrandbits(7),
-                              random.getrandbits(7),
-                              color)
-        elapsed = time.ticks_ms()-start
-        print(f"fast     10k pixels in {elapsed} ms")
+    start = time.ticks_ms()
+    for i in range(1000):
+        x = random.getrandbits(7)
+        y = random.getrandbits(7)
+        display.raw_pixel(x,y,color)
+    elapsed = time.ticks_ms()-start
+    print(f"1k pixels in {elapsed} ms")
 
 while True:
     display.line(

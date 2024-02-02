@@ -12,32 +12,24 @@ from micropython import const
 import ustruct as struct
 import framebuf
 
-# commands
+# Commands. We use a small subset of what is
+# available and assume no MISO pin to read
+# from the display.
 ST77XX_NOP = bytes([0x00])
 ST77XX_SWRESET = bytes([0x01])
-ST77XX_RDDID = bytes([0x04])
-ST77XX_RDDST = bytes([0x09])
-
 ST77XX_SLPIN = bytes([0x10])
 ST77XX_SLPOUT = bytes([0x11])
-ST77XX_PTLON = bytes([0x12])
 ST77XX_NORON = bytes([0x13])
-
 ST77XX_INVOFF = bytes([0x20])
 ST77XX_INVON = bytes([0x21])
-ST77XX_DISPOFF = bytes([0x28])
 ST77XX_DISPON = bytes([0x29])
 ST77XX_CASET = bytes([0x2A])
 ST77XX_RASET = bytes([0x2B])
 ST77XX_RAMWR = bytes([0x2C])
-ST77XX_RAMRD = bytes([0x2E])
-
-ST77XX_PTLAR = bytes([0x30])
-ST77XX_VSCRDEF = bytes([0x33])
 ST77XX_COLMOD = bytes([0x3A])
 ST7789_MADCTL = bytes([0x36])
 
-# MADCTL flags
+# MADCTL command flags
 ST7789_MADCTL_MY = const(0x80)
 ST7789_MADCTL_MX = const(0x40)
 ST7789_MADCTL_MV = const(0x20)
@@ -46,7 +38,7 @@ ST7789_MADCTL_BGR = const(0x08)
 ST7789_MADCTL_MH = const(0x04)
 ST7789_MADCTL_RGB = const(0x00)
 
-# Color mode flags
+# COLMOD command flags
 ColorMode_65K = const(0x50)
 ColorMode_262K = const(0x60)
 ColorMode_12bit = const(0x03)
@@ -54,19 +46,9 @@ ColorMode_16bit = const(0x05)
 ColorMode_18bit = const(0x06)
 ColorMode_16M = const(0x07)
 
-# Color definitions
-BLACK = const(0x0000)
-BLUE = const(0x001F)
-RED = const(0xF800)
-GREEN = const(0x07E0)
-CYAN = const(0x07FF)
-MAGENTA = const(0xF81F)
-YELLOW = const(0xFFE0)
-WHITE = const(0xFFFF)
-
+# Struct pack formats for pixel/pos encoding
 _ENCODE_PIXEL = ">H"
 _ENCODE_POS = ">HH"
-_DECODE_PIXEL = ">BBB"
 
 class ST7789:
     def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
@@ -95,7 +77,7 @@ class ST7789:
         elif (self.width, self.height) == (128, 160):
             self.xstart = 0
             self.ystart = 0
-      elif (self.width, self.height) == (240, 240):
+        elif (self.width, self.height) == (240, 240):
             self.xstart = 0
             self.ystart = 0
         elif (self.width, self.height) == (135, 240):
@@ -219,18 +201,12 @@ class ST7789:
         return struct.pack(_ENCODE_POS, x, y)
 
     def _set_columns(self, start, end):
-        if start > end or end >= self.width:
-            return
-        start += self.xstart
-        end += self.xstart
-        self.write(ST77XX_CASET, self._encode_pos(start, end))
+        self.write(ST77XX_CASET, self._encode_pos(start+self.xstart, end+self.xstart))
 
     def _set_rows(self, start, end):
-        if start > end or end >= self.height:
-            return
         start += self.ystart
         end += self.ystart
-        self.write(ST77XX_RASET, self._encode_pos(start, end))
+        self.write(ST77XX_RASET, self._encode_pos(start+self.ystart, end+self.ystart))
 
     def set_window(self, x0, y0, x1, y1):
         self._set_columns(x0, x1)
@@ -248,32 +224,25 @@ class ST7789:
         else:
             self.write(None, self.rawbuffer)
 
-    def raw_pixel(self,x,y,color):
-        self.set_window(x, y, x, y)
-        self.write(None, color)
-
+    # Drawing raw pixels is a fundamental operation so we go low
+    # level avoiding function calls. This and other optimizations
+    # made drawing 10k pixels with an ESP2866 from 420ms to 100ms.
     @micropython.native
-    def raw_pixel_fast(self,x,y,color):
-        if True:
-            self.dc.off()
-            self.spi.write(ST77XX_CASET)
-            self.dc.on()
-            self.spi.write(self._encode_pos(x, x))
+    def raw_pixel(self,x,y,color):
+        self.dc.off()
+        self.spi.write(ST77XX_CASET)
+        self.dc.on()
+        self.spi.write(self._encode_pos(x, x))
 
-            self.dc.off()
-            self.spi.write(ST77XX_RASET)
-            self.dc.on()
-            self.spi.write(self._encode_pos(y, y))
+        self.dc.off()
+        self.spi.write(ST77XX_RASET)
+        self.dc.on()
+        self.spi.write(self._encode_pos(y, y))
 
-            self.dc.off()
-            self.spi.write(ST77XX_RAMWR)
-            self.dc.on()
-            self.spi.write(color)
-
-        if False:
-            self.write(ST77XX_CASET, self._encode_pos(x, x))
-            self.write(ST77XX_RASET, self._encode_pos(y, y))
-            self.write(ST77XX_RAMWR, color)
+        self.dc.off()
+        self.spi.write(ST77XX_RAMWR)
+        self.dc.on()
+        self.spi.write(color)
 
     def raw_fill(self,color):
         self.set_window(0, 0, self.width-1, self.height-1)
