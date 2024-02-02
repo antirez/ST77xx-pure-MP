@@ -108,6 +108,13 @@ class ST7789:
             self.rawbuffer = bytearray(width*height*2)
             self.fb = framebuf.FrameBuffer(self.rawbuffer,width,height,
                                            framebuf.RGB565)
+
+        # Always allocate a tiny 8x8 framebuffer in RGB565 for fast
+        # single chars plotting. This is useful in order to draw text
+        # using the framebuffer 8x8 font inside micropython and using
+        # a single SPI write for each whole character.
+        self.charfb_data = bytearray(8*8*2)
+        self.charfb = framebuf.FrameBuffer(self.charfb_data,8,8,framebuf.RGB565)
         self.fill = self.fb.fill
         self.pixel = self.fb.pixel
         self.hline = self.fb.hline
@@ -323,6 +330,15 @@ class ST7789:
 				self.raw_pixel(x - y0, y + x0, color)
 				self.raw_pixel(x + y0, y - x0, color)
 				self.raw_pixel(x - y0, y - x0, color)
+
+    # Draw a single character 'char' using the font in the MicroPython
+    # framebuffer implementation. It is possible to specify the background and
+    # foreground color in RGB.
+    def raw_char(self,x,y,char,bgcolor,fgcolor):
+        self.charfb.fill(bgcolor)
+        self.charfb.text(0,0,fgcolor)
+        self.set_window(x, y, x+7, y+7)
+        self.write(None,self.charfb_data)
 
     def contrast(self,level):
         # TODO: implement me!
