@@ -220,6 +220,7 @@ class ST7789:
     # of all the 256 possible 8-pixel arrangements.
     @micropython.native
     def show_mono(self):
+        self.set_window(0, 0, self.width-1,self.height-1)
         for i in range(0,len(self.rawbuffer),self.width//8):
             for j in range(self.width//8):
                 self.mono_row[j*16:(j+1)*16] = self.mono_conv_map[self.rawbuffer[i+j]]
