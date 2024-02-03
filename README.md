@@ -22,9 +22,10 @@ Why don't implement the driver directly in C? Because MicroPython default instal
 ## Demo
 
 This demo shows what the driver can do if used with an ESP8266EX.
-Performances with a modern ESP32 will be much better.
+Performances with a modern ESP32 will be much better. Click on the image to see the YouTube video.
 
-[![ST77XX driver demo](https://img.youtube.com/vi/0iNZUMW-uXk/0.jpg)](https://www.youtube.com/watch?v=0iNZUMW-uXk)
+[<img src="https://i.ytimg.com/vi/0iNZUMW-uXk/0.jpg" width="50%">](https://www.youtube.com/watch?v=0iNZUMW-uXk "ST77XX driver demo")
+
 
 *Click the above image to see the video*
 
@@ -70,9 +71,16 @@ to pin 5 of our board:
     backlight.on()
 
 At this point if everything went well, you can draw on the display.
-Check "test.py" for an example and to verify your display is working.
+Check `test.py` for an example and to verify your display is working.
+After editing `test.py` to put your SPI configuration, pins, display
+size and so forth, you can run it with:
 
-The following is the list of the graphics primitives available.
+    mpremote cp st7789.py :
+    mpremote run test.py
+
+## Graphic primitives
+
+The following is the list of the graphic primitives available.
 
     # Fast methods
 
