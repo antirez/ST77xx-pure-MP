@@ -191,7 +191,6 @@ class ST7789:
     # Drawing raw pixels is a fundamental operation so we go low
     # level avoiding function calls. This and other optimizations
     # made drawing 10k pixels with an ESP2866 from 420ms to 100ms.
-    @micropython.native
     def pixel(self,x,y,color):
         if x < 0 or x >= self.width or y < 0 or y >= self.height: return
         self.dc.off()
@@ -255,6 +254,24 @@ class ST7789:
             if e2 <= dx:
                 err += dx
                 y0 += sy
+
+    # Draw a full or empty rectangle.
+    # x,y are the top-left corner coordinates.
+    # w and h are width/height in pixels.
+    def rect(self,x,y,w,h,color,fill=False):
+        if fill:
+            self.set_window(x,y,x+w-1,y+1-w)
+            if w*h > 256:
+                buf = color*w
+                for i in range(h): self.write(None, buf)
+            else:
+                buf = color*(w*h)
+                self.write(None, buf)
+        else:
+            self.hline(x,x+w-1,y,color)
+            self.hline(x,x+w-1,y+h-1,color)
+            self.vline(y,y+h-1,x,color)
+            self.vline(y,y+h-1,x+w-1,color)
 
     # Midpoint Circle algorithm for filled circle.
     def circle(self, x, y, radius, color, fill=False):
@@ -373,6 +390,3 @@ class ST7789:
         for i in range(len(txt)):
             self.char(x+i*8,y,txt[i],bgcolor,fgcolor)
 
-    def contrast(self,level):
-        # TODO: implement me!
-        pass

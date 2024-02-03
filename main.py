@@ -38,6 +38,21 @@ while True:
     elapsed = time.ticks_ms()-start
     print(f"1k pixels in {elapsed} ms")
 
+    # Random rectangles, empty and full.
+    full = True
+    for i in range(500):
+        fill_color = display.color(random.getrandbits(8),
+                                   random.getrandbits(8),
+                                   random.getrandbits(8))
+        display.rect(
+            random.getrandbits(8),
+            random.getrandbits(8),
+            random.getrandbits(6),
+            random.getrandbits(6),
+            fill_color,
+            full)
+        full = not full # Switch between full and empty circles.
+
     # Random circles, empty and full.
     full = True
     for i in range(100):
