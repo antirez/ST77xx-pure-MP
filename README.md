@@ -4,7 +4,7 @@ This is a pure-MicroPython driver for the ST7789 / ST7735 display drivers, desig
 
 Display drivers are more easily implemented by allocating (and subclassing) a MicroPython framebuffer in order to use its drawing primitives. This way drawing happesn in the device memory, without any need for I/O. Finally, to show the image on the screen, the framebuffer memory gets transfer to the display memory with a single long SPI write operation. This transfer is usually implemented in the .show() method of the driver.
 
-However, even with a relatively small 160x128 display, this way of doing things requires allocating a bytearray of 160*128*2 bytes (2 bytes per pixel in RGB565 mode), which is 40k of total memory: more than what is available to a fresh ESP2866 MicroPython install. Even with more advanced MCUs, and especially if larger displays are used, the percentage of the available memory wasted on the framebuffer would often be prohibitive.
+However, even with a relatively small 160x128 display, this way of doing things requires allocating a bytearray of `160*128*2` bytes (2 bytes per pixel in RGB565 mode), which is 40k of total memory: more than what is available to a fresh ESP2866 MicroPython install. Even with more advanced MCUs, and especially if larger displays are used, the percentage of the available memory wasted on the framebuffer would often be prohibitive.
 
 The alternative to this approach is writing directly to the display memory, which is often slow, since initiating SPI transfers for little data (for instance in the case of a single pixel drawing) is costly, especially in MicroPython.
 
