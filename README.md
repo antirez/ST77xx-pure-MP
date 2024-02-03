@@ -14,7 +14,7 @@ Why don't implement the driver directly in C? Because MicroPython default instal
 
 ## Features
 
-* Minimal driver code to communicate with ST77xx. It was initially based on [this driver](https://github.com/devbis/st7789py_mpy) but nows the common code is minimal. Thank you to the author!
+* Minimal driver code to communicate with ST77xx. It was initially based on [this driver](https://github.com/devbis/st7789py_mpy). While now the common code is minimal, a big thank you to the original author: it was very useful to get started with a very simple codebase.
 * All the common graphical primitives, with very fast boxes, fill, hline, vline, and text. Other advanced shapes are also implemented trying to squeeze possible speedups: circles, triangles, and so forth.
 * **Very low** memory usage in terms of allocations performed.
 * Hopefully clean understandable code.
