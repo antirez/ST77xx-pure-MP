@@ -55,6 +55,7 @@ while True:
     # Random lines
     display.fill(display.color(0,0,0))
     full = True
+    start = time.ticks_ms()
     for i in range(100):
         fill_color = display.color(random.getrandbits(8),
                                    random.getrandbits(8),
@@ -65,6 +66,8 @@ while True:
             random.getrandbits(8),
             random.getrandbits(8),
             fill_color)
+    elapsed = time.ticks_ms()-start
+    print(f"Milliseconds per random line {elapsed/100} ms")
 
     # Random triangles
     full = True

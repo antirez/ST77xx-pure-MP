@@ -233,12 +233,8 @@ class ST7789:
         self.write(None, color*(y1-y0+1))
 
     # Bresenham's algorithm with fast path for horizontal / vertical lines.
-    # Note that here a further optimization is possible exploiting how the
-    # ST77xx addresses memory: we should always trace lines from smaller x,y
-    # to higher x,y values, then as long as we keep incrementing the "x" or
-    # "y" coordinate we could not change the set memory window, and just
-    # write the color bytes the ST77xx. Only when we change which variable
-    # we increment, we set the window again.
+    # Note that accumulating partial successive small horizontal/vertical
+    # lines is actually slower than the vanilla pixel approach.
     def line(self, x0, y0, x1, y1, color):
         if y0 == y1: return self.hline(x0, x1, y0, color)
         if x0 == x1: return self.vline(y0, y1, x0, color)
