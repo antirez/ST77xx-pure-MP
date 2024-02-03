@@ -367,8 +367,8 @@ class ST7789:
 
         # Obtain the character representation in our
         # 8x8 framebuffer.
-        self.charfb.fill(struct.unpack(">H",bgcolor)[0])
-        self.charfb.text(char,0,0,struct.unpack(">H",fgcolor)[0])
+        self.charfb.fill(bgcolor[1]<<8|bgcolor[0])
+        self.charfb.text(char,0,0,fgcolor[1]<<8|fgcolor[0])
 
         if x+7 >= self.width:
             # Right side of char does not fit on the screen.
