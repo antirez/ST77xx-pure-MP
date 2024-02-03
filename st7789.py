@@ -52,7 +52,7 @@ _ENCODE_POS = ">HH"
 
 class ST7789:
     def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
-                 xstart=-1, ystart=-1, inversion=False, fbmode=None):
+                 xstart=None, ystart=None, inversion=False, fbmode=None):
         """
         display = st7789.ST7789(
             SPI(1, baudrate=40000000, phase=0, polarity=1),
@@ -73,7 +73,7 @@ class ST7789:
 
         # Configure display parameters that depend on the
         # screen size.
-        if xstart >= 0 and ystart >= 0:
+        if xstart and ystart:
             self.xstart = xstart
             self.ystart = ystart
         elif (self.width, self.height) == (128, 160):
@@ -191,6 +191,9 @@ class ST7789:
         end += self.ystart
         self.write(ST77XX_RASET, self._encode_pos(start+self.ystart, end+self.ystart))
 
+    # Set the video memory windows that will be receive our
+    # SPI data writes. Note that this function assumes that
+    # x0 <= x1 and y0 <= y1.
     def set_window(self, x0, y0, x1, y1):
         self._set_columns(x0, x1)
         self._set_rows(y0, y1)
@@ -241,10 +244,11 @@ class ST7789:
 
     # Bresenham's algorithm with fast path for horizontal / vertical lines.
     # Note that here a further optimization is possible exploiting how the
-    # ST77xx addresses memory: we should always trace lines from left
-    # to right, then as long as we keep incrementing the "x" we could
-    # not change the current window, and just write the color bytes to
-    # the ST77xx.
+    # ST77xx addresses memory: we should always trace lines from smaller x,y
+    # to higher x,y values, then as long as we keep incrementing the "x" or
+    # "y" coordinate we could not change the set memory window, and just
+    # write the color bytes the ST77xx. Only when we change which variable
+    # we increment, we set the window again.
     def line(self, x0, y0, x1, y1, color):
         if y0 == y1: return self.hline(x0, x1, y0, color)
         if x0 == x1: return self.vline(y0, y1, x0, color)
@@ -257,8 +261,7 @@ class ST7789:
 
         while True:
             self.pixel(x0, y0, color)
-            if x0 == x1 and y0 == y1:
-                break
+            if x0 == x1 and y0 == y1: break
             e2 = 2 * err
             if e2 >= dy:
                 err += dy
@@ -317,10 +320,28 @@ class ST7789:
     # rgb565 value since this is the format that the framebuffer
     # implementation expects.
     def char(self,x,y,char,bgcolor,fgcolor):
+        if x >= self.width:
+            return # Totally out of display area
+
+        # Obtain the character representation in our
+        # 8x8 framebuffer.
         self.charfb.fill(struct.unpack(">H",bgcolor)[0])
         self.charfb.text(char,0,0,struct.unpack(">H",fgcolor)[0])
-        self.set_window(x, y, x+7, y+7)
-        self.write(None,self.charfb_data)
+
+        if x+7 >= self.width:
+            # Right side of char does not fit on the screen.
+            # Partial update.
+            width = self.width-x # Visible width pixels
+            self.set_window(x, y, x+width-1, y+7)
+            copy = bytearray(width*8*2)
+            for dy in range(8):
+                src_idx = (dy*8)*2
+                dst_idx = (dy*width)*2
+                copy[dst_idx:dst_idx+width*2] = self.charfb_data[src_idx:src_idx+width*2]
+            self.write(None,copy)
+        else:
+            self.set_window(x, y, x+7, y+7)
+            self.write(None,self.charfb_data)
 
     # Write text. Like 'char' but for full strings.
     def text(self,x,y,txt,bgcolor,fgcolor):

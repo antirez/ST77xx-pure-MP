@@ -22,8 +22,12 @@ color = display.color(255,0,0)
 while True:
 
     # Write some text.
-    display.char(10,10,'a',display.color(10,10,10),display.color(255,255,255))
-    display.text(30,30,'Hello World',display.color(0,0,0),display.color(255,255,255))
+    x = 30 
+    y = 0
+    for i in range(20):
+        x += 2
+        y += 8
+        display.text(x,y,'Hello World',display.color(0,0,0),display.color(255,255,255))
 
     # Random points using raw pixels.
     start = time.ticks_ms()
