@@ -4,14 +4,14 @@ import st7789
 
 display = st7789.ST7789(
     SPI(1, baudrate=40000000, phase=0, polarity=0),
-    128, 160,
+    160, 128,
     reset=machine.Pin(2, machine.Pin.OUT),
     dc=machine.Pin(4, machine.Pin.OUT),
     cs=machine.Pin(10, machine.Pin.OUT),
     inversion = False,
 )
 
-display.init()
+display.init(landscape=True,mirror_y=True)
 backlight = Pin(5,Pin.OUT)
 backlight.on()
 
@@ -22,12 +22,12 @@ color = display.color(255,0,0)
 while True:
 
     # Write some text.
-    x = 30 
+    x = -15 
     y = 0
     for i in range(20):
         x += 2
         y += 8
-        display.text(x,y,'Hello World',display.color(0,0,0),display.color(255,255,255))
+        display.text(x,y,'Text drawing,Hello!',display.color(0,0,0),display.color(255,255,255))
 
     # Random points using raw pixels.
     start = time.ticks_ms()
@@ -66,12 +66,18 @@ while True:
             random.getrandbits(8),
             fill_color)
 
-while True:
-    print("HERE")
-    time.sleep(1)
-
-while False:
-    d = dht.DHT22(Pin(12))
-    time.sleep(1)
-    d.measure()
-    print("%.1f, %.1f" % (d.temperature(), d.humidity()))
+    # Random triangles
+    full = True
+    for i in range(100):
+        fill_color = display.color(random.getrandbits(8),
+                                   random.getrandbits(8),
+                                   random.getrandbits(8))
+        display.triangle(
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            random.getrandbits(7),
+            fill_color, full)
+        full = not full # Switch between full and empty triangles.

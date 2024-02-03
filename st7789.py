@@ -140,7 +140,7 @@ class ST7789:
     def _set_color_mode(self, mode):
         self.write(ST77XX_COLMOD, bytes([mode & 0x77]))
 
-    def init(self, *args, **kwargs):
+    def init(self, landscape=False, mirror_x=False, mirror_y=False, is_bgr=False):
         self.cs.off() # This this like that forever, much faster than
                       # continuously setting it on/off and rarely the
                       # SPI is connected to any other hardware.
@@ -151,7 +151,7 @@ class ST7789:
         color_mode=ColorMode_65K | ColorMode_16bit
         self._set_color_mode(color_mode)
         time.sleep_ms(50)
-        self._set_mem_access_mode(0, False, False, False)
+        self._set_mem_access_mode(landscape, mirror_x, mirror_y, is_bgr)
         self.inversion_mode(self.inversion)
         time.sleep_ms(10)
         self.write(ST77XX_NORON)
@@ -160,23 +160,12 @@ class ST7789:
         self.write(ST77XX_DISPON)
         time.sleep_ms(500)
 
-    def _set_mem_access_mode(self, rotation, vert_mirror, horz_mirror, is_bgr):
-        rotation &= 7
-        value = {
-            0: 0,
-            1: ST7789_MADCTL_MX,
-            2: ST7789_MADCTL_MY,
-            3: ST7789_MADCTL_MX | ST7789_MADCTL_MY,
-            4: ST7789_MADCTL_MV,
-            5: ST7789_MADCTL_MV | ST7789_MADCTL_MX,
-            6: ST7789_MADCTL_MV | ST7789_MADCTL_MY,
-            7: ST7789_MADCTL_MV | ST7789_MADCTL_MX | ST7789_MADCTL_MY,
-        }[rotation]
-
-        if vert_mirror: value |= ST7789_MADCTL_ML
-        elif horz_mirror: value |= ST7789_MADCTL_MH
+    def _set_mem_access_mode(self, landscape, mirror_x, mirror_y, is_bgr):
+        value = 0
+        if landscape: value |= ST7789_MADCTL_MV
+        if mirror_x: value |= ST7789_MADCTL_MX
+        if mirror_y: value |= ST7789_MADCTL_MY
         if is_bgr: value |= ST7789_MADCTL_BGR
-
         self.write(ST7789_MADCTL, bytes([value]))
 
     def _encode_pos(self, x, y):
@@ -204,7 +193,7 @@ class ST7789:
     # made drawing 10k pixels with an ESP2866 from 420ms to 100ms.
     @micropython.native
     def pixel(self,x,y,color):
-        if x >= self.width: return
+        if x < 0 or x >= self.width or y < 0 or y >= self.height: return
         self.dc.off()
         self.spi.write(ST77XX_CASET)
         self.dc.on()
@@ -232,6 +221,7 @@ class ST7789:
     # We can draw horizontal and vertical lines very fast because
     # we can just set a 1 pixel wide/tall window and fill it.
     def hline(self,x0,x1,y,color):
+        if y < 0 or y >= self.height: return
         x0,x1 = max(min(x0,x1),0),min(max(x0,x1),self.width-1)
         self.set_window(x0, y, x1, y)
         self.write(None, color*(x1-x0+1))
@@ -312,6 +302,45 @@ class ST7789:
 				self.pixel(x + y0, y - x0, color)
 				self.pixel(x - y0, y - x0, color)
 
+	# This function draws a filled triangle: it is an
+	# helper of .triangle when the fill flag is true.
+    def fill_triangle(self, x0, y0, x1, y1, x2, y2, color):
+        # Vertex are required to be ordered by y.
+        if y0 > y1: x0, y0, x1, y1 = x1, y1, x0, y0
+        if y0 > y2: x0, y0, x2, y2 = x2, y2, x0, y0
+        if y1 > y2: x1, y1, x2, y2 = x2, y2, x1, y1
+
+        # Calculate slopes.
+        inv_slope1 = (x1 - x0) / (y1 - y0) if y1 - y0 != 0 else 0
+        inv_slope2 = (x2 - x0) / (y2 - y0) if y2 - y0 != 0 else 0
+        inv_slope3 = (x2 - x1) / (y2 - y1) if y2 - y1 != 0 else 0
+
+        x_start, x_end = x0, x0
+
+        # Fill upper part.
+        for y in range(y0, y1 + 1):
+            self.hline(int(x_start), int(x_end), y, color)
+            x_start += inv_slope1
+            x_end += inv_slope2
+
+        # Adjust for the middle segment.
+        x_start = x1
+
+        # Fill the lower part.
+        for y in range(y1 + 1, y2 + 1):
+            self.hline(int(x_start), int(x_end), y, color)
+            x_start += inv_slope3
+            x_end += inv_slope2
+
+    # Draw full or empty triangles.
+    def triangle(self, x0, y0, x1, y1, x2, y2, color, fill=False):
+        if fill:
+            return self.fill_triangle(x0,y0,x1,y1,x2,y2,color)
+        else:
+            self.line(x0,y0,x1,y1,color)
+            self.line(x1,y1,x2,y2,color)
+            self.line(x2,y2,x0,y0,color)
+
     # Draw a single character 'char' using the font in the MicroPython
     # framebuffer implementation. It is possible to specify the background and
     # foreground color in RGB.
@@ -320,7 +349,7 @@ class ST7789:
     # rgb565 value since this is the format that the framebuffer
     # implementation expects.
     def char(self,x,y,char,bgcolor,fgcolor):
-        if x >= self.width:
+        if x >= self.width or y >= self.height:
             return # Totally out of display area
 
         # Obtain the character representation in our
