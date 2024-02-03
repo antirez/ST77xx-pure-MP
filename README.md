@@ -2,7 +2,7 @@ This is a pure-MicroPython driver for the ST7789 / ST7735 display drivers, desig
 
 ## Motivations
 
-Display drivers are more easily implemented by allocating (and subclassing) a MicroPython framebuffer in order to use its drawing primitives. This way drawing happesn in the device memory, without any need for I/O. Finally, to show the image on the screen, the framebuffer memory gets transfer to the display memory with a single long SPI write operation. This transfer is usually implemented in the .show() method of the driver.
+Display drivers are more easily implemented by allocating (and subclassing) a MicroPython framebuffer in order to use its drawing primitives. This way drawing happens in the device memory, without any need for I/O. Finally, to show the image on the screen, the framebuffer memory gets transfer to the display memory with a single long SPI write operation. This transfer is usually implemented in the .show() method of the driver.
 
 However, even with a relatively small 160x128 display, this way of doing things requires allocating a bytearray of `160*128*2` bytes (2 bytes per pixel in RGB565 mode), which is 40k of total memory: more than what is available to a fresh ESP2866 MicroPython install. Even with more advanced MCUs, and especially if larger displays are used, the percentage of the available memory wasted on the framebuffer would often be prohibitive.
 
@@ -31,7 +31,7 @@ Performances with a modern ESP32 will be much better. Click on the image to see 
 
 ## Usage
 
-This driver works with both ST7789 and ST7735 based displays. Other models are yet to be tested. The driver does not require the display to have any data output avaiable (these devices are often MOSI-only).
+This driver works with both ST7789 and ST7735 based displays. Other models are yet to be tested. The driver does not require the display to have any data output available (these devices are often MOSI-only).
 
 First of all, you need to create the display object, providing an
 SPI interface to communicate with the display (see below in this README what
@@ -63,7 +63,7 @@ arguments inverted, 128, 160. To initialize:
     display.init(landscape=True,mirror_y=True)
 
 Then you are likely to require a backlight, if you want to see
-what the display is dislaying. This depends on the display technology
+what the display is displaying. This depends on the display technology
 used. Here is an example in case the backlight led pin is connected
 to pin 5 of our board:
 
@@ -115,7 +115,7 @@ and mirroring of the image without having to transform the image at
 software level.
 
 Normally these displays native orientation is portrait (vertical), so
-for instance if I have a 128x160 diplay, by default it will show
+for instance if I have a 128x160 display, by default it will show
 its content oriented as a tall rectangle.
 
 The default behavior may be changed at initialization, by passing
@@ -169,7 +169,7 @@ GND       -> GND       (one of the many)
 VCC       -> 3V3       (one of the many)
 
 Please note that this corresponds to the SPI interface 1 (known as
-HSPI), becuase the SPI 0 is used in order to communicate with
+HSPI), because the SPI 0 is used in order to communicate with
 the internal flash memory.
 
 Make sure to set 'polarity' in the SPI interface according to your display specification. Sometimes it is 1 sometimes 0.
