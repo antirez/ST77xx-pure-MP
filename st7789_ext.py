@@ -113,7 +113,7 @@ class ST7789(st7789_base.ST7789_base):
         fb = framebuf.FrameBuffer(bitmap,8,8,framebuf.MONO_HMSB)
         fb.text(char,0,0,fgcolor[1]<<8|fgcolor[0])
         charsize = 8*upscaling
-        if bgcolor: self.rect(x,y,charsize,charsize,bgcolor)
+        if bgcolor: self.rect(x,y,charsize,charsize,bgcolor,fill=True)
         for py in range(8):
             for px in range(8):
                 if not (bitmap[py] & (1<<px)): continue # Background
