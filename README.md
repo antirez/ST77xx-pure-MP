@@ -43,7 +43,7 @@ display does not work, it depends on the actual display you got.
     import st7789_base, st7789_ext
     from machine import Pin
 
-    display = st7789.ST7789(
+    display = st7789_ext.ST7789(
         SPI(1, baudrate=40000000, phase=0, polarity=0),
         160, 128,
         reset=machine.Pin(2, machine.Pin.OUT),
@@ -52,7 +52,7 @@ display does not work, it depends on the actual display you got.
         inversion = False,
     )
 
-*Note: there are two imports to lower the compile-time memory requirements for MicroPython, you may also want to import only the base module if you just need basic primitives and consume less memory.*
+*Note: there are two imports to lower the compile-time memory requirements for MicroPython, you may also want to import only the base module if you just need basic primitives and consume less memory, in this case initialize with st7789_base instead of st7789_ext.*
 
 If colors look inverted, set inversion to True.
 
