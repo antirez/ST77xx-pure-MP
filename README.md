@@ -77,7 +77,7 @@ Check `test.py` for an example and to verify your display is working.
 After editing `test.py` to put your SPI configuration, pins, display
 size and so forth, you can run it with:
 
-    mpremote cp st7789.py :
+    mpremote cp st7789*.py :
     mpremote run test.py
 
 ## Graphic primitives
