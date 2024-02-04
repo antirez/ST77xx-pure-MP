@@ -93,11 +93,12 @@ The following is the list of the graphic primitives available.
     def rect(self,x,y,w,h,color,fill=False) # Draw full or empty rectangle
     def text(self,x,y,txt,bgcolor,fgcolor)  # Draw text
 
-    # Slower methods, what they do should be clear
+    # Slower methods, they do what they say :)
 
     def line(self, x0, y0, x1, y1, color)
     def circle(self, x, y, radius, color, fill=False)
     def triangle(self, x0, y0, x1, y1, x2, y2, color, fill=False)
+    def upscaled_text(self,x,y,txt,fgcolor,bgcolor=None,upscaling=2)
 
 Everywhere there is to provide a color, you need to create the
 color bytes with:
