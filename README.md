@@ -40,7 +40,7 @@ pins you could use in your device).
 Please note that phase/polarity sometimes must be set to '1', or the
 display does not work, it depends on the actual display you got.
 
-    import st7789
+    import st7789_base, st7789_ext
     from machine import Pin
 
     display = st7789.ST7789(
@@ -51,6 +51,8 @@ display does not work, it depends on the actual display you got.
         cs=machine.Pin(10, machine.Pin.OUT),
         inversion = False,
     )
+
+*Note: there are two imports to lower the compile-time memory requirements for MicroPython, you may also want to import only the base module if you just need basic primitives and consume less memory.*
 
 If colors look inverted, set inversion to True.
 
@@ -89,7 +91,6 @@ The following is the list of the graphic primitives available.
     def hline(self,x0,x1,y,color) # Draw fast horizontal line
     def vline(self,y0,y1,x,color) # Draw fast vertical line
     def rect(self,x,y,w,h,color,fill=False) # Draw full or empty rectangle
-    def char(self,x,y,char,bgcolor,fgcolor) # Draw a single character
     def text(self,x,y,txt,bgcolor,fgcolor)  # Draw text
 
     # Slower methods, what they do should be clear
@@ -106,6 +107,38 @@ color bytes with:
 Then use it like that:
 
     display.rect(10,10,50,50,mycolor,fill=True)
+
+## Writing text
+
+The main API to write text using an 8x8 font is the following one:
+
+    def text(self,x,y,txt,fgcolor,bgcolor)  # Draw text
+
+This method is designed to be fast enough, so it use a small 8x8 frame
+buffer inside the device. When using this method, it is mandatory
+to specify both the background and foreground color. This means that
+what is in the 8x8 area where each character will be rendered will
+be replaced with the background color.
+
+There is an alternative **slower API** that has two advanced features:
+
+* You can specify None as background color, if you want to leave the current graphics on the screen as text background.
+* It supports upscaling (default 2). So by default this API writes bigger 16x16 characters. If you use 3 they will be 24x24 and so forth. Upscaling of 1 is also supported, in acse you are interested just in preserving the background specifying None, but you want normal sized text of 8x8 pixels.
+
+This is the method signature:
+
+    def upscaled_text(self,x,y,txt,fgcolor,bgcolor=None,upscaling=2)
+
+Examples:
+
+    # 8x8 text, bg preserved.
+    display.upscaled_text(10,10,"Hey!",mycolor,upscaling=1)
+
+    # 16x16 text, fg and bg colors specified.
+    display.upscaled_text(10,10,"Big text",mycolor,mybg)
+
+    # 32x32 text, background of target area preserved.
+    display.upscaled_text(30,30,str(temperature),mycolor,upscaling=4)
 
 ## Rotating the display view
 

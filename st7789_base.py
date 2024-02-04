@@ -50,7 +50,7 @@ ColorMode_16M = const(0x07)
 _ENCODE_PIXEL = ">H"
 _ENCODE_POS = ">HH"
 
-class ST7789:
+class ST7789_base:
     def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
                  xstart=None, ystart=None, inversion=False, fbmode=None):
         """
@@ -217,44 +217,6 @@ class ST7789:
         buf = color*self.width
         for i in range(self.height): self.write(None, buf)
 
-    # We can draw horizontal and vertical lines very fast because
-    # we can just set a 1 pixel wide/tall window and fill it.
-    def hline(self,x0,x1,y,color):
-        if y < 0 or y >= self.height: return
-        x0,x1 = max(min(x0,x1),0),min(max(x0,x1),self.width-1)
-        self.set_window(x0, y, x1, y)
-        self.write(None, color*(x1-x0+1))
-
-    # Same as hline() but for vertical lines.
-    def vline(self,y0,y1,x,color):
-        y0,y1 = max(min(y0,y1),0),min(max(y0,y1),self.height-1)
-        self.set_window(x, y0, x, y1)
-        self.write(None, color*(y1-y0+1))
-
-    # Bresenham's algorithm with fast path for horizontal / vertical lines.
-    # Note that accumulating partial successive small horizontal/vertical
-    # lines is actually slower than the vanilla pixel approach.
-    def line(self, x0, y0, x1, y1, color):
-        if y0 == y1: return self.hline(x0, x1, y0, color)
-        if x0 == x1: return self.vline(y0, y1, x0, color)
-
-        dx = abs(x1 - x0)
-        dy = -abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx + dy  # Error value for xy
-
-        while True:
-            self.pixel(x0, y0, color)
-            if x0 == x1 and y0 == y1: break
-            e2 = 2 * err
-            if e2 >= dy:
-                err += dy
-                x0 += sx
-            if e2 <= dx:
-                err += dx
-                y0 += sy
-
     # Draw a full or empty rectangle.
     # x,y are the top-left corner coordinates.
     # w and h are width/height in pixels.
@@ -273,86 +235,19 @@ class ST7789:
             self.vline(y,y+h-1,x,color)
             self.vline(y,y+h-1,x+w-1,color)
 
-    # Midpoint Circle algorithm for filled circle.
-    def circle(self, x, y, radius, color, fill=False):
-        f = 1 - radius
-        dx = 1
-        dy = -2 * radius
-        x0 = 0
-        y0 = radius
+    # We can draw horizontal and vertical lines very fast because
+    # we can just set a 1 pixel wide/tall window and fill it.
+    def hline(self,x0,x1,y,color):
+        if y < 0 or y >= self.height: return
+        x0,x1 = max(min(x0,x1),0),min(max(x0,x1),self.width-1)
+        self.set_window(x0, y, x1, y)
+        self.write(None, color*(x1-x0+1))
 
-        if fill:
-            self.hline(x - radius, x + radius, y, color) # Draw diameter
-        else:
-            self.pixel(x - radius, y, color) # Left-most point
-            self.pixel(x + radius, y, color) # Right-most point
-
-        while x0 < y0:
-            if f >= 0:
-                y0 -= 1
-                dy += 2
-                f += dy
-            x0 += 1
-            dx += 2
-            f += dx
-
-            if fill:
-				# We can exploit our relatively fast horizontal line
-				# here, and just draw an h line for each two points at
-				# the extremes.
-                self.hline(x - x0, x + x0, y + y0, color) # Upper half
-                self.hline(x - x0, x + x0, y - y0, color) # Lower half
-                self.hline(x - y0, x + y0, y + x0, color) # Right half
-                self.hline(x - y0, x + y0, y - x0, color) # Left half
-            else:
-				# Plot points in each of the eight octants
-				self.pixel(x + x0, y + y0, color)
-				self.pixel(x - x0, y + y0, color)
-				self.pixel(x + x0, y - y0, color)
-				self.pixel(x - x0, y - y0, color)
-				self.pixel(x + y0, y + x0, color)
-				self.pixel(x - y0, y + x0, color)
-				self.pixel(x + y0, y - x0, color)
-				self.pixel(x - y0, y - x0, color)
-
-	# This function draws a filled triangle: it is an
-	# helper of .triangle when the fill flag is true.
-    def fill_triangle(self, x0, y0, x1, y1, x2, y2, color):
-        # Vertex are required to be ordered by y.
-        if y0 > y1: x0, y0, x1, y1 = x1, y1, x0, y0
-        if y0 > y2: x0, y0, x2, y2 = x2, y2, x0, y0
-        if y1 > y2: x1, y1, x2, y2 = x2, y2, x1, y1
-
-        # Calculate slopes.
-        inv_slope1 = (x1 - x0) / (y1 - y0) if y1 - y0 != 0 else 0
-        inv_slope2 = (x2 - x0) / (y2 - y0) if y2 - y0 != 0 else 0
-        inv_slope3 = (x2 - x1) / (y2 - y1) if y2 - y1 != 0 else 0
-
-        x_start, x_end = x0, x0
-
-        # Fill upper part.
-        for y in range(y0, y1 + 1):
-            self.hline(int(x_start), int(x_end), y, color)
-            x_start += inv_slope1
-            x_end += inv_slope2
-
-        # Adjust for the middle segment.
-        x_start = x1
-
-        # Fill the lower part.
-        for y in range(y1 + 1, y2 + 1):
-            self.hline(int(x_start), int(x_end), y, color)
-            x_start += inv_slope3
-            x_end += inv_slope2
-
-    # Draw full or empty triangles.
-    def triangle(self, x0, y0, x1, y1, x2, y2, color, fill=False):
-        if fill:
-            return self.fill_triangle(x0,y0,x1,y1,x2,y2,color)
-        else:
-            self.line(x0,y0,x1,y1,color)
-            self.line(x1,y1,x2,y2,color)
-            self.line(x2,y2,x0,y0,color)
+    # Same as hline() but for vertical lines.
+    def vline(self,y0,y1,x,color):
+        y0,y1 = max(min(y0,y1),0),min(max(y0,y1),self.height-1)
+        self.set_window(x, y0, x, y1)
+        self.write(None, color*(y1-y0+1))
 
     # Draw a single character 'char' using the font in the MicroPython
     # framebuffer implementation. It is possible to specify the background and
@@ -361,7 +256,7 @@ class ST7789:
     # the color as two bytes, we convert the colors back into a 16 bit
     # rgb565 value since this is the format that the framebuffer
     # implementation expects.
-    def char(self,x,y,char,bgcolor,fgcolor):
+    def char(self,x,y,char,fgcolor,bgcolor):
         if x >= self.width or y >= self.height:
             return # Totally out of display area
 
@@ -386,7 +281,8 @@ class ST7789:
             self.write(None,self.charfb_data)
 
     # Write text. Like 'char' but for full strings.
-    def text(self,x,y,txt,bgcolor,fgcolor):
+    def text(self,x,y,txt,fgcolor,bgcolor):
         for i in range(len(txt)):
-            self.char(x+i*8,y,txt[i],bgcolor,fgcolor)
+            self.char(x+i*8,y,txt[i],fgcolor,bgcolor)
+
 

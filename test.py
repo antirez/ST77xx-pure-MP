@@ -1,8 +1,8 @@
 import dht, machine, time, random
 from machine import Pin, SPI
-import st7789
+import st7789_base, st7789_ext
 
-display = st7789.ST7789(
+display = st7789_ext.ST7789(
     SPI(1, baudrate=40000000, phase=0, polarity=0),
     160, 128,
     reset=machine.Pin(2, machine.Pin.OUT),
@@ -21,13 +21,17 @@ color = display.color(255,0,0)
 
 while True:
 
+    upscaled = ["START","TEST","NOW..."]
+    for i in range(3):
+        display.upscaled_text(20*i,20*i,upscaled[i],display.color(15+80*i,15+80*i,15+80*i),upscaling=3)
+
     # Write some text.
     x = -15 
     y = 0
     for i in range(20):
         x += 2
         y += 8
-        display.text(x,y,'Text drawing,Hello!',display.color(0,0,0),display.color(255,255,255))
+        display.text(x,y,'Text drawing,Hello!',display.color(255,255,255),display.color(0,0,0))
 
     # Random points using raw pixels.
     start = time.ticks_ms()
