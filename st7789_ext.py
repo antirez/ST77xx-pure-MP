@@ -1,4 +1,4 @@
-import st7789_base, framebuf
+import st7789_base, framebuf, struct
 
 class ST7789(st7789_base.ST7789_base):
     # Bresenham's algorithm with fast path for horizontal / vertical lines.
@@ -125,3 +125,20 @@ class ST7789(st7789_base.ST7789_base):
     def upscaled_text(self,x,y,txt,fgcolor,*,bgcolor=None,upscaling=2):
         for i in range(len(txt)):
             self.upscaled_char(x+i*(8*upscaling),y,txt[i],fgcolor,bgcolor,upscaling)
+
+    # Show a 565 file (see conversion tool into "pngto565".
+    def image(self,x,y,filename):
+        try:
+            f = open(filename,"r")
+        except:
+            print("Warning: file not found displaying image:", filename)
+            return
+        hdr = f.read(4)
+        w,h = struct.unpack(">HH",hdr)
+        self.set_window(x,y,x+w-1,y+h-1)
+        buf = bytearray(256)
+        nocopy = memoryview(buf)
+        while True:
+            nread = f.readinto(buf)
+            if nread == 0: return
+            self.write(None, nocopy[:nread])

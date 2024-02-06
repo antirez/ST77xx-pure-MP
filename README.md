@@ -78,6 +78,7 @@ After editing `test.py` to put your SPI configuration, pins, display
 size and so forth, you can run it with:
 
     mpremote cp st7789*.py :
+    mpremote cp lenna.565 :        # Optional, for image demo.
     mpremote run test.py
 
 ## Graphic primitives
@@ -92,6 +93,7 @@ The following is the list of the graphic primitives available.
     def vline(self,y0,y1,x,color) # Draw fast vertical line
     def rect(self,x,y,w,h,color,fill=False) # Draw full or empty rectangle
     def text(self,x,y,txt,bgcolor,fgcolor)  # Draw text
+    def image(self,x,y,filename)  # Show image in 565 format
 
     # Slower methods, they do what they say :)
 
@@ -140,6 +142,30 @@ Examples:
 
     # 32x32 text, background of target area preserved.
     display.upscaled_text(30,30,str(temperature),mycolor,upscaling=4)
+
+## Drawing images
+
+The library is able to display images in a very fast way, transferring
+converted images from the filesystem inside the device directly to the
+video memory, without wasting more than 256 bytes of local buffers.
+
+In order to do this, images must be converted from PNG to RGB565
+format. There is a tool to do this, inside the directory `pngto565`.
+Compile it with `make`, then:
+
+    pngto565 file.png file.565
+
+Then transfer the file in the device with:
+
+    mpremote cp file.565 :
+
+And display it with:
+
+    display.image(10,10,"file.565")
+
+Please note that in order to be fast, this method can't do bound checking
+so if you display an image at a location where the image will go outside
+the limits of the display, the rendered image may look odd / corrupted.
 
 ## Rotating the display view
 

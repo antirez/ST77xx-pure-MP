@@ -1,4 +1,4 @@
-import dht, machine, time, random
+import dht, machine, time, random, os
 from machine import Pin, SPI
 import st7789_base, st7789_ext
 
@@ -32,6 +32,13 @@ while True:
         x += 2
         y += 8
         display.text(x,y,'Text drawing,Hello!',display.color(255,255,255),display.color(0,0,0))
+
+    # If the file lenna.565 was lodaded in the device, show
+    # it on the screen.
+    for i in range(20):
+        x = random.getrandbits(6)
+        y = random.getrandbits(6)
+        display.image(x,y,"lenna.565")
 
     # Random points using raw pixels.
     start = time.ticks_ms()
