@@ -129,7 +129,7 @@ class ST7789(st7789_base.ST7789_base):
     # Show a 565 file (see conversion tool into "pngto565".
     def image(self,x,y,filename):
         try:
-            f = open(filename,"r")
+            f = open(filename,"rb")
         except:
             print("Warning: file not found displaying image:", filename)
             return
