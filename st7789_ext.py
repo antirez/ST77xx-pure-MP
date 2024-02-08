@@ -1,3 +1,12 @@
+# This code is originally from https://github.com/devbis/st7789py_mpy
+# It's under the MIT license as well.
+#
+# Rewritten by Salvatore Sanfilippo.
+#
+# Copyright (C) 2024 Salvatore Sanfilippo <antirez@gmail.com>
+# All Rights Reserved
+# All the changes released under the MIT license as the original code.
+
 import st7789_base, framebuf, struct
 
 class ST7789(st7789_base.ST7789_base):

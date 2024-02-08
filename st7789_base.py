@@ -1,7 +1,7 @@
 # This code is originally from https://github.com/devbis/st7789py_mpy
 # It's under the MIT license as well.
 #
-# Rewritten in terms of MicroPython framebuffer by Salvatore Sanfilippo.
+# Rewritten by Salvatore Sanfilippo.
 #
 # Copyright (C) 2024 Salvatore Sanfilippo <antirez@gmail.com>
 # All Rights Reserved
