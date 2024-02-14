@@ -8,10 +8,9 @@ display = st7789_ext.ST7789(
     reset=machine.Pin(2, machine.Pin.OUT),
     dc=machine.Pin(4, machine.Pin.OUT),
     cs=machine.Pin(10, machine.Pin.OUT),
-    inversion = False,
 )
 
-display.init(landscape=True,mirror_y=True)
+display.init(landscape=True,mirror_y=True,inversion=False)
 backlight = Pin(5,Pin.OUT)
 backlight.on()
 

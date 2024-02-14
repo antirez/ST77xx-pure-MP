@@ -51,8 +51,7 @@ _ENCODE_PIXEL = ">H"
 _ENCODE_POS = ">HH"
 
 class ST7789_base:
-    def __init__(self, spi, width, height, reset, dc, cs=None, backlight=None,
-                 xstart=None, ystart=None, inversion=False, fbmode=None):
+    def __init__(self, spi, width, height, reset, dc, cs=None):
         """
         display = st7789.ST7789(
             SPI(1, baudrate=40000000, phase=0, polarity=1),
@@ -68,26 +67,6 @@ class ST7789_base:
         self.reset = reset
         self.dc = dc
         self.cs = cs
-        self.backlight = backlight
-        self.inversion = inversion
-
-        # Configure display parameters that depend on the
-        # screen size.
-        if xstart and ystart:
-            self.xstart = xstart
-            self.ystart = ystart
-        elif (self.width, self.height) == (128, 160):
-            self.xstart = 0
-            self.ystart = 0
-        elif (self.width, self.height) == (240, 240):
-            self.xstart = 0
-            self.ystart = 0
-        elif (self.width, self.height) == (135, 240):
-            self.xstart = 52
-            self.ystart = 40
-        else:
-            self.xstart = 0
-            self.ystart = 0
 
         # Always allocate a tiny 8x8 framebuffer in RGB565 for fast
         # single chars plotting. This is useful in order to draw text
@@ -110,7 +89,7 @@ class ST7789_base:
             self.spi.write(command)
         if data is not None:
             self.dc.on()
-            self.spi.write(data)
+            if len(data): self.spi.write(data)
 
     def hard_reset(self):
         if self.reset:
@@ -140,7 +119,31 @@ class ST7789_base:
     def _set_color_mode(self, mode):
         self.write(ST77XX_COLMOD, bytes([mode & 0x77]))
 
-    def init(self, landscape=False, mirror_x=False, mirror_y=False, is_bgr=False):
+    def init(self, landscape=False, mirror_x=False, mirror_y=False, is_bgr=False, xstart = None, ystart = None, inversion = False):
+
+        self.inversion = inversion
+        self.mirror_x = mirror_x
+        self.mirror_y = mirror_y
+
+        # Configure display parameters that depend on the
+        # screen size.
+        if xstart != None and ystart != None:
+            self.xstart = xstart
+            self.ystart = ystart
+        elif (self.width, self.height) == (128, 160):
+            self.xstart = 0
+            self.ystart = 0
+        elif (self.width, self.height) == (240, 240):
+            self.xstart = 0
+            self.ystart = 0
+            if self.mirror_y: self.ystart = 40
+        elif (self.width, self.height) == (135, 240):
+            self.xstart = 52
+            self.ystart = 40
+        else:
+            self.xstart = 0
+            self.ystart = 0
+
         self.cs.off() # This this like that forever, much faster than
                       # continuously setting it on/off and rarely the
                       # SPI is connected to any other hardware.
@@ -196,12 +199,12 @@ class ST7789_base:
         self.dc.off()
         self.spi.write(ST77XX_CASET)
         self.dc.on()
-        self.spi.write(self._encode_pos(x, x))
+        self.spi.write(self._encode_pos(x+self.xstart, x+self.xstart))
 
         self.dc.off()
         self.spi.write(ST77XX_RASET)
         self.dc.on()
-        self.spi.write(self._encode_pos(y, y))
+        self.spi.write(self._encode_pos(y+self.ystart*2, y+self.ystart*2))
 
         self.dc.off()
         self.spi.write(ST77XX_RAMWR)
