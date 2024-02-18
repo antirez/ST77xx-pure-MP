@@ -8,7 +8,7 @@ However, even with a relatively small 160x128 display, this way of doing things 
 
 The alternative to this approach is writing directly to the display memory, which is often slow, since initiating SPI transfers for little data (for instance in the case of a single pixel drawing) is costly, especially in MicroPython.
 
-**This driver's goal is to try to optimize direct memory access as much as possible** in order to have acceptable performances even if it's pure MicroPython code that uses SPI memory access to the display memory.
+**This driver's goal is to try to optimize direct memory access as much as possible** in order to have acceptable performances even if it's pure MicroPython code that uses SPI memory access to the display memory. However, when enough memory is available (for instance when using ESP32 S3 devices), this driver also allows to enable the framebuffer and draw much faster graphics, or even mix the two approaches.
 
 Why don't implement the driver directly in C? Because MicroPython default installs are what most people have access to :) And a C driver requires rebuilding MicroPython, which is not a trivial process involving installing embedded IDEs, cross compiling and so forth.
 
@@ -17,6 +17,7 @@ Why don't implement the driver directly in C? Because MicroPython default instal
 * Minimal driver code to communicate with ST77xx. It was initially based on [this driver](https://github.com/devbis/st7789py_mpy). While now the common code is minimal, a big thank you to the original author: it was very useful to get started with a very simple codebase.
 * All the common graphical primitives, with very fast boxes, fill, hline, vline, and text. Other advanced shapes are also implemented trying to squeeze possible speedups: circles, triangles, and so forth.
 * **Very low** memory usage in terms of allocations performed.
+* Optional support for framebuffer graphics. Ability to mix between direct ST77xx memory writing and framebuffer updates.
 * Hopefully clean understandable code.
 
 ## Demo
@@ -166,6 +167,36 @@ And display it with:
 Please note that in order to be fast, this method can't do bound checking
 so if you display an image at a location where the image will go outside
 the limits of the display, the rendered image may look odd / corrupted.
+
+## Using the framebuffer
+
+By default, the driver directly addresses the ST77xx on-chip video memory.
+However when more speed is needed (and enough memory is available), it
+is possible to optionally allocate and use a framebuffer:
+
+```
+... initialization of the display here ...
+display.enable_framebuffer()
+display.fb.text("Hello world",10,10,display.fb_color(255,0,0))
+display.show()
+```
+
+To draw things on the framebuffer, just reference the MicroPython framebuffer
+instance directly, using the `.fb` attribute as above. The driver offers
+a pratical function to convert from r,g,b colors to the framebuffer 16 bit
+integer RGB565 format. Make sure to call `fb_color` and not `color` as you
+would do when using the directy memory write primitives.
+
+It is possible to mix framebuffer and direct memory writing.
+For instance after composing a complex image in the framebuffer,
+you may want to call `.show()` to render it on the screen, but then if
+there are small items to draw over the existing video content, you
+can just call the native methods documented in the first part of this
+README.
+
+This way you can also use the advaced functions that are not available
+in the framebuffer implementation, like text upscaling, drawing of
+images from files in rgb565 format, and so forth.
 
 ## Rotating the display view
 

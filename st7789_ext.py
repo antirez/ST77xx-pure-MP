@@ -151,3 +151,24 @@ class ST7789(st7789_base.ST7789_base):
             nread = f.readinto(buf)
             if nread == 0: return
             self.write(None, nocopy[:nread])
+
+    # Turn on framebuffer. You can write to it directly addressing
+    # the fb instance like in:
+    #
+    # display.fb.fill(display.fb_color(100,50,50))
+    # display.show()
+    def enable_framebuffer(self):
+        self.rawbuffer = bytearray(self.width*self.height*2)
+        self.fb = framebuf.FrameBuffer(self.rawbuffer,
+            self.width,self.height,framebuf.RGB565)
+
+    # This function is used to conver an RGB value to the
+    # equivalent color for the framebuffer functions.
+    def fb_color(self,r,g,b):
+        c = self.color(r,g,b)
+        return c[1]<<8 | c[0]
+
+    # Transfer the framebuffer image into the display
+    def show(self):
+        self.set_window(0,0,self.width-1,self.height-1)
+        self.write(None, self.rawbuffer)
