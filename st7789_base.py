@@ -334,10 +334,9 @@ class ST7789_base:
     # this requires a conversion while transferring data.
     def show_mono(self):
         self.set_window(0,0,self.width-1,self.height-1)
-        buf = memoryview(self.rawbuffer)
         row = bytearray(self.width*2)
         bit = 0
         for y in range(int(self.height)):
-            self.show_mono_row_to_rgb(buf,row,bit,self.width)
+            self.show_mono_row_to_rgb(self.rawbuffer,row,bit,self.width)
             bit += self.width
             self.write(None, row)

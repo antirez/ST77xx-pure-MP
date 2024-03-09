@@ -198,6 +198,20 @@ This way you can also use the advaced functions that are not available
 in the framebuffer implementation, like text upscaling, drawing of
 images from files in rgb565 format, and so forth.
 
+## Mono framebuffer
+
+If you need fast graphics but don't need colors, it is possible to
+enable the framebuffer in monochromatic mode:
+
+```
+display.enable_framebuffer()
+```
+
+Your only colors will be 0 and 1 (black and white) in this case, but
+you will be using just `width*height/8` total bytes of memory, and updating
+the display with the `.show()` method is fast even it this requires a
+conversion, thanks to the Viper native emitter of MicroPython.
+
 ## Rotating the display view
 
 The ST77xx chip is quite able to transparently rotate / mirror the access
