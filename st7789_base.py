@@ -289,4 +289,55 @@ class ST7789_base:
         for i in range(len(txt)):
             self.char(x+i*8,y,txt[i],fgcolor,bgcolor)
 
+    # Turn on framebuffer. You can write to it directly addressing
+    # the fb instance like in:
+    #
+    # display.fb.fill(display.fb_color(100,50,50))
+    # display.show()
+    def enable_framebuffer(self,mono=False):
+        if mono == False:
+            self.fbformat = framebuf.RGB565
+            self.rawbuffer = bytearray(self.width*self.height*2)
+            self.show = self.show_rgb
+        else:
+            self.fbformat = framebuf.MONO_HMSB
+            self.rawbuffer = bytearray((self.width*self.height+7)//8)
+            self.show = self.show_mono
 
+        self.fb = framebuf.FrameBuffer(self.rawbuffer,
+            self.width,self.height,self.fbformat)
+
+    # This function is used to conver an RGB value to the
+    # equivalent color for the framebuffer functions.
+    def fb_color(self,r,g,b):
+        c = self.color(r,g,b)
+        return c[1]<<8 | c[0]
+
+    # Transfer the framebuffer image into the display. RGB565 mode.
+    def show_rgb(self):
+        self.set_window(0,0,self.width-1,self.height-1)
+        self.write(None, self.rawbuffer)
+
+    # This function uses the Viper native code emitter. The speedup is
+    # like 20x or alike. It converts a row of 1 bit pixels into a row
+    # of RGB565 pixels, helping show_mono() to go much faster.
+    @micropython.viper
+    def show_mono_row_to_rgb(self, src: ptr8, dst: ptr8, bit: int, width: int):
+        for x in range(width):
+            byte = bit//8
+            color = 0xff * ((src[byte] >> (bit&7)) & 1)
+            dst[x<<1] = color
+            dst[(x<<1)+1] = color
+            bit += 1
+
+    # Transfer the framebuffer image into the display. 1 bit mode, so
+    # this requires a conversion while transferring data.
+    def show_mono(self):
+        self.set_window(0,0,self.width-1,self.height-1)
+        buf = memoryview(self.rawbuffer)
+        row = bytearray(self.width*2)
+        bit = 0
+        for y in range(int(self.height)):
+            self.show_mono_row_to_rgb(buf,row,bit,self.width)
+            bit += self.width
+            self.write(None, row)
