@@ -264,3 +264,47 @@ HSPI), because the SPI 0 is used in order to communicate with
 the internal flash memory.
 
 Make sure to set 'polarity' in the SPI interface according to your display specification. Sometimes it is 1 sometimes 0.
+
+### Initialization parameters for different displays tested.
+
+Please note that pins may vary depending on your connection with the MCU.
+
+**AliExpress 1.14" IPS, 240x135, ver 1.1**
+
+```python
+display = st7789_ext.ST7789(
+    SPI(0, baudrate=40000000, phase=1, polarity=1, sck=Pin(2), mosi=Pin(3), miso=Pin(4)),
+    240, 135,
+    reset=machine.Pin(7, machine.Pin.OUT),
+    dc=machine.Pin(6, machine.Pin.OUT),
+    cs=None,
+)
+display.init(landscape=True,mirror_y=True,inversion=True,xstart=40,ystart=26)
+```
+
+**AliExpress 1.8" TFT, 128x160, V1.1**
+
+```python
+display = st7789_ext.ST7789(
+    SPI(1, baudrate=40000000, phase=0, polarity=0),
+    160, 128,
+    reset=machine.Pin(2, machine.Pin.OUT),
+    dc=machine.Pin(4, machine.Pin.OUT),
+    cs=machine.Pin(10, machine.Pin.OUT),
+)
+
+display.init(landscape=True,mirror_y=True,inversion=False)
+```
+
+**Lilygo T-WATCH S3 240x240 display**
+
+```python
+display = st7789_ext.ST7789(
+    SPI(1, baudrate=40000000, phase=0, polarity=1, sck=18, mosi=13, miso=37),
+    240, 240,
+    reset=False,
+    dc=machine.Pin(38, machine.Pin.OUT),
+    cs=machine.Pin(12, machine.Pin.OUT),
+)
+display.init(landscape=False,mirror_y=True,mirror_x=True,inversion=True)
+```
