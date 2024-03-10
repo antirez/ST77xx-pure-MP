@@ -318,25 +318,27 @@ class ST7789_base:
         self.set_window(0,0,self.width-1,self.height-1)
         self.write(None, self.rawbuffer)
 
-    # This function uses the Viper native code emitter. The speedup is
-    # like 20x or alike. It converts a row of 1 bit pixels into a row
-    # of RGB565 pixels, helping show_mono() to go much faster.
+    # This function uses the Viper native code emitter with a speedup
+    # of 20x or alike. It converts rows of 1 bit pixels into a rows
+    # of RGB565 pixels, to transfer our mono framebuffer in the display
+    # memory. On a Raspberry Pico this takes about ~60ms.
     @micropython.viper
-    def show_mono_row_to_rgb(self, src: ptr8, dst: ptr8, bit: int, width: int):
-        for x in range(width):
-            byte = bit//8
-            color = 0xff * ((src[byte] >> (bit&7)) & 1)
-            dst[x<<1] = color
-            dst[(x<<1)+1] = color
-            bit += 1
+    def fast_mono_to_rgb(self, fb8: ptr8, width: int, height: int):
+        # Just allocate one row worth of buffer.
+        row = bytearray(int(self.width)*2)
+        dst = ptr16(row)
+        bit = int(0)
+        for y in range(height):
+            for x in range(width):
+                byte = bit//8
+                color = 0xffff * ((fb8[byte] >> (bit&7)) & 1)
+                dst[x] = color
+                bit += 1
+            # Each row is written in a single SPI call.
+            self.write(None, row)
 
     # Transfer the framebuffer image into the display. 1 bit mode, so
     # this requires a conversion while transferring data.
     def show_mono(self):
         self.set_window(0,0,self.width-1,self.height-1)
-        row = bytearray(self.width*2)
-        bit = 0
-        for y in range(int(self.height)):
-            self.show_mono_row_to_rgb(self.rawbuffer,row,bit,self.width)
-            bit += self.width
-            self.write(None, row)
+        self.fast_mono_to_rgb(self.rawbuffer,self.width,self.height)
