@@ -145,7 +145,7 @@ class ST7789_base:
             self.ystart = 0
 
         if self.cs:
-            self.cs.off() # This this like that forever, much faster than
+            self.cs.off() # Take this like that forever, much faster than
                           # continuously setting it on/off and rarely the
                           # SPI is connected to any other hardware.
         self.hard_reset()
@@ -180,8 +180,6 @@ class ST7789_base:
         self.write(ST77XX_CASET, self._encode_pos(start+self.xstart, end+self.xstart))
 
     def _set_rows(self, start, end):
-        start += self.ystart
-        end += self.ystart
         self.write(ST77XX_RASET, self._encode_pos(start+self.ystart, end+self.ystart))
 
     # Set the video memory windows that will be receive our

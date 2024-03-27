@@ -293,7 +293,7 @@ display = st7789_ext.ST7789(
     dc=machine.Pin(6, machine.Pin.OUT),
     cs=None,
 )
-display.init(landscape=True,mirror_y=True,inversion=True,xstart=40,ystart=26)
+display.init(landscape=True,mirror_y=True,inversion=True,xstart=40,ystart=52)
 ```
 
 **AliExpress 1.8" TFT, 128x160, V1.1**
