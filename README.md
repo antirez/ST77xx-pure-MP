@@ -1,4 +1,4 @@
-This is a pure-MicroPython driver for the ST7789 / ST7735 display drivers, designed in order to use very little memory.
+This is a pure-MicroPython driver for the ST7789 / ST7735 / ILI9471 / ILI9472 display drivers, designed in order to use very little memory.
 
 ## Motivations
 
