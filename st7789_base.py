@@ -224,7 +224,7 @@ class ST7789_base:
     # w and h are width/height in pixels.
     def rect(self,x,y,w,h,color,fill=False):
         if fill:
-            self.set_window(x,y,x+w-1,y+1-w)
+            self.set_window(x,y,x+w-1,y+w-1)
             if w*h > 256:
                 buf = color*w
                 for i in range(h): self.write(None, buf)
